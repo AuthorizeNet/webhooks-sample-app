@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    </head>
+    <body>
+
+        <form class="needs-validation" novalidate>
+            <div class="container">
+                <br />
+                <div class="row">
+                    <div class="col">
+                        <input type="text" class="form-control" placeholder="First name">
+                    </div>
+                    <div class="col">
+                        <input type="text" id="url" class="form-control" placeholder="Endpoint URL" required>
+                        <div class="invalid-feedback">
+                            Please enter a Endpoint URL.
+                        </div>
+                    </div>
+                </div>
+                <br /><br />
+                <div class="row">
+                    <div class="col-md-6 brd">
+                        <div class="center-block">Status:<br />
+                            <label class="radio-inline"><input type="radio" name="active">Active</label>
+                        </div>
+                        <div class="center-block">
+                            <label class="radio-inline"><input type="radio" name="active" checked>Inactive</label>
+                        </div>
+                    </div>
+
+                </div>
+                <div id="messageList">
+                    <div class="row">
+                        <div class="col" id="col1">
+                        </div>
+                        <div class="col" id="col2">
+                        </div>
+                    </div>
+
+                    </div>
+                <button class="btn btn-primary" type="submit">Create Webhook</button>
+            </div>
+
+        </form>
+        
+
+        <script>
+            
+            //$("#messageList").text("");
+            getEvents();
+            //createCheckbox();
+            (function () {
+                'use strict';
+                window.addEventListener('load', function () {
+                    var forms = document.getElementsByClassName('needs-validation');
+                    var validation = Array.prototype.filter.call(forms, function (form) {
+                        form.addEventListener('submit', function (event) {
+                            //url validation not working
+                            //var urlregex = /^(https?|ftp):\/\/([a-zA-Z0-9.-]+(:[a-zA-Z0-9.&%$-]+)*@)*((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.(com|edu|gov|int|mil|net|org|biz|arpa|info|name|pro|aero|coop|museum|[a-zA-Z]{2}))(:[0-9]+)*(\/($|[a-zA-Z0-9.,?'\\+&%$#=~_-]+))*$/;
+                            //form.validation = urlregex.test(document.getElementById("url").value);
+                            if (form.checkValidity() === false) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }
+                            form.classList.add('was-validated');
+                        }, false);
+                    });
+                }, false);
+
+
+            })();
+
+            async function addEventMessage(data) {
+                //$("#messageList").append(`<p> Event Name is ${data.event_name} and Webhook id is ${data.webhook_id} </p>`)
+                console.log("\n entered addEventMessage in index");
+                //$("#messageList").append(`<h5> ${data} </h5>`);
+                var newRows = ''
+                newRows = "<div class=\"form - check form - check - inline\">";
+                for (var i = 0; i < data.length; i++) {
+                    newRows += "<div class=\"row\"><div class=\"col\">" + data[i] + "</div>"
+                    if ((i + 1) < data.length)
+                        newRows += "<div class=\"col\">" + data[++i] + "</div>"
+                    newRows += "</div>\n";
+                }
+
+                console.log(newRows);
+
+                $("#messageList").append(newRows);
+            }
+            function getEvents() {
+                $.get('http://127.0.0.1:8000/events', async (data) => {
+                    console.log("\nindexxx get events\n")
+                    console.log("available events are ", data);
+                    $("#messageList").append(" Available Events are: <br />");
+                    //var newRows = await addEventMessage(data);
+                    var newRows = await createCheckbox(data);
+                })
+            }
+
+            async function createCheckbox(data) {
+                var myDiv = document.getElementById("col1");
+                var myDiv1 = document.getElementById("col2");
+                //var newRows =''
+                
+                for (var i = 0; i < data.length; i++) {
+                    var label = ''
+                    var checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.name = data[i];
+                    checkbox.value = data[i];
+                    checkbox.id = data[i];
+                    checkbox.checked = false;
+                    label = document.createElement('label')
+                    label.htmlFor = data[i];
+                    label.appendChild(document.createTextNode(data[i]));
+                    //newRows = "<div class=\"row\"><div class=\"col\">";
+                    //myDiv.append(newRows);
+                    
+                    myDiv1.appendChild(checkbox);
+                    myDiv1.appendChild(label);
+                    myDiv.appendChild(checkbox);
+                    myDiv.appendChild(label);
+                    //var br = document.createElement("br");
+                    //myDiv.appendChild(br);
+                    //myDiv1.appendChild(br);
+                }
+                
+                //console.log(newRows);
+
+                //$("#messageList").append(newRows);
+            }
+        </script>
+
+
+
+
+
+
+
+    </body>
+</html>
