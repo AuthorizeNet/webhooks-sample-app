@@ -17,18 +17,16 @@
                 <button id="webhook" class="btn btn-success">Webhooks</button>
             </div>
         </div>
-        <button id="newWebhook" class="btn btn-info invisible" target="_blank">Create new Webhook</button>
+        <button id="newWebhook" class="btn btn-info invisible" target="_blank">Create new Endpoint</button>
         <div id="message">
             
             <div id="messageList">
             </div>
-        </div>
-        
+        </div>        
 
         <script>
             //postNotifications("trying to post a message"); posting a message and getting 200 OK reply
             $(() => {
-                // $("#newWebhook").addClass('hidden');
                 $("#event").click(() => {
                     var message = "hello post messages"
                     $("#messageList").text("");
@@ -36,8 +34,6 @@
                 })
 
                 $("#webhook").click(async () => {
-                    
-                    //document.getElementById("newWebhook")
                     $("#messageList").text("");
                     getWebhooks();
                     $("#newWebhook").toggleClass('invisible');
@@ -114,8 +110,7 @@
                             <tbody>${webhookMessage}</tbody></table>`
                 );
             }
-
-
+            
             function postNotifications(message) {
                 $.post('http://127.0.0.1:8000/notifications', message, (res) => $("#messageList").append("message posted",res))
             }

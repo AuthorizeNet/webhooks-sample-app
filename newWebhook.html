@@ -13,10 +13,10 @@
                 <br />
                 <div class="row">
                     <div class="col">
-                        <input type="text" class="form-control" placeholder="First name">
+                        <input type="text" id="webhookName" class="form-control" placeholder="Webhook name">
                     </div>
                     <div class="col">
-                        <input type="text" id="url" class="form-control" placeholder="Endpoint URL" required>
+                        <input type="url" id="url" class="form-control" placeholder="Endpoint URL" required>
                         <div class="invalid-feedback">
                             Please enter a Endpoint URL.
                         </div>
@@ -25,25 +25,33 @@
                 <br /><br />
                 <div class="row">
                     <div class="col-md-6 brd">
-                        <div class="center-block">Status:<br />
-                            <label class="radio-inline"><input type="radio" name="active">Active</label>
+                        <div class="center-block">
+                            Status:<br />
+                            <label class="radio-inline"><input type="radio" name="status" value="active">Active</label>
                         </div>
                         <div class="center-block">
-                            <label class="radio-inline"><input type="radio" name="active" checked>Inactive</label>
+                            <label class="radio-inline"><input type="radio" name="status" value="inactive" checked>Inactive</label>
                         </div>
                     </div>
 
                 </div>
-                <div id="messageList">
+                <div id="messageList" class="center-block">
+                    <span class="label label-primary">Available Events are:</span>
+                    <br /><br />
                     <div class="row">
-                        <div class="col" id="col1">
+                        <div class="center-block col-md-6 brd">
+                            <div class="col center-block  form-check" id="col1">
+                            </div>
                         </div>
-                        <div class="col" id="col2">
+                        <div class="center-block col-md-6 brd">
+                            <div class="col" id="col2">
+                            </div>
                         </div>
                     </div>
 
-                    </div>
-                <button class="btn btn-primary" type="submit">Create Webhook</button>
+                </div>
+                <button class="btn btn-primary" type="submit">Save</button>
+                <p id="selectedBox">test</p>
             </div>
 
         </form>
@@ -51,12 +59,48 @@
 
         <script>
             
-            //$("#messageList").text("");
-            getEvents();
-            //createCheckbox();
+            $("button").click(function () {
+                var favorite = [];
+                $.each($("input[name='chbEvent']:checked"), function () {
+                    favorite.push(String($(this).val()));
+                });
+
+                var statusValue = $("input[name='status']:checked").val();
+                if (favorite.length == 0) {
+                    alert("atleast one event must be selected");
+                    return false;
+                }
+                else {
+
+                    //alert("favorite: " + favorite + "array from favorite: " + Array.from(favorite));
+                    var webhookValues = {
+                        "name": $("#webhookName").val(),
+                        "url": $("#url").val(),
+                        "eventTypes": Array.from(favorite),
+                        "status": statusValue
+                    }
+                    //alert("" + webhookValues);
+                    createEndpoint(webhookValues);
+                }
+            });
+
+            function createEndpoint(webhookValues) {
+                console.log("\n entered createendpoint in index");
+                $.post('http://127.0.0.1:8000/webhooks', webhookValues, async function (res) {
+                    var i = 0;
+                    var webhookMessage = ''
+                    console.log(res);
+                    //for (i = 0; i < data.length; ++i)
+                    //    webhookMessage += await addWebhookMessage(data[i]);
+                    //console.log(" Available Webhooks are: \n");
+                    //printWebhookMessage(webhookMessage);
+                });
+            }
+
             (function () {
                 'use strict';
                 window.addEventListener('load', function () {
+                    getEvents();
                     var forms = document.getElementsByClassName('needs-validation');
                     var validation = Array.prototype.filter.call(forms, function (form) {
                         form.addEventListener('submit', function (event) {
@@ -71,8 +115,6 @@
                         }, false);
                     });
                 }, false);
-
-
             })();
 
             async function addEventMessage(data) {
@@ -94,10 +136,6 @@
             }
             function getEvents() {
                 $.get('http://127.0.0.1:8000/events', async (data) => {
-                    console.log("\nindexxx get events\n")
-                    console.log("available events are ", data);
-                    $("#messageList").append(" Available Events are: <br />");
-                    //var newRows = await addEventMessage(data);
                     var newRows = await createCheckbox(data);
                 })
             }
@@ -111,36 +149,31 @@
                     var label = ''
                     var checkbox = document.createElement("input");
                     checkbox.type = "checkbox";
-                    checkbox.name = data[i];
+                    checkbox.name = "chbEvent";
                     checkbox.value = data[i];
                     checkbox.id = data[i];
+                    checkbox.classList.add("form-check-input")
                     checkbox.checked = false;
                     label = document.createElement('label')
+                    label.classList.add("form-check-label")
                     label.htmlFor = data[i];
                     label.appendChild(document.createTextNode(data[i]));
                     //newRows = "<div class=\"row\"><div class=\"col\">";
                     //myDiv.append(newRows);
+                    var br = document.createElement("br");
+                    if (i % 2 == 0) {
+                        myDiv.appendChild(checkbox);
+                        myDiv.appendChild(label);
+                        myDiv.appendChild(br);
+                    }
+                    else {
+                        myDiv1.appendChild(checkbox);
+                        myDiv1.appendChild(label);
+                        myDiv1.appendChild(br);
+                    }
                     
-                    myDiv1.appendChild(checkbox);
-                    myDiv1.appendChild(label);
-                    myDiv.appendChild(checkbox);
-                    myDiv.appendChild(label);
-                    //var br = document.createElement("br");
-                    //myDiv.appendChild(br);
-                    //myDiv1.appendChild(br);
                 }
-                
-                //console.log(newRows);
-
-                //$("#messageList").append(newRows);
             }
         </script>
-
-
-
-
-
-
-
     </body>
 </html>
