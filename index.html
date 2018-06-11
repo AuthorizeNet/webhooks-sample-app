@@ -5,6 +5,7 @@
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+        <script src="/socket.io/socket.io.js"></script>
     </head>
     <body>
         <div class="container">
@@ -13,8 +14,10 @@
                 <h4 class="diplay-4">Menu</h4>
 
                 <br />
-                <button id="event" class="btn btn-success">Events</button>
+                <button id="event" class="btn btn-success">All Events</button>
                 <button id="webhook" class="btn btn-success">Webhooks</button>
+                <button id="enrolledEvents" class="btn btn-success">Enrolled Events</button>
+                <button id="chart" class="btn btn-success">Charts</button>
             </div>
         </div>
         <button id="newWebhook" class="btn btn-info invisible" target="_blank">Create new Endpoint</button>
@@ -25,11 +28,15 @@
         </div>        
 
         <script>
-            //postNotifications("trying to post a message"); posting a message and getting 200 OK reply
+            var socket = io()
+            //postNotifications("trying to post a message"); //posting a message and getting 200 OK reply
             $(() => {
                 $("#event").click(() => {
                     var message = "hello post messages"
                     $("#messageList").text("");
+                    var newWebhookElement = document.getElementById("newWebhook");
+                    if (! $("#newWebhook").hasClass("invisible"))
+                        $("#newWebhook").toggleClass('invisible');                    
                     getEvents();
                 })
 
@@ -42,23 +49,107 @@
                 $("#newWebhook").click(() => {
                     location.href = "./newWebhook.html";                    
                 })
+
+                $("#chart").click(() => {
+                    location.href = "./chart.html";
+                })
+
+                $("#enrolledEvents").click(async function(){
+                    $("#messageList").text("");
+                    await getWebhookEventDetails();
+                                        
+                })
+                
             })
+
+            async function getWebhookEventDetails() {
+                var webhookWebhookEventDict = {};
+               
+                $.get('http://127.0.0.1:8000/webhooks', async function (data) {
+                    var i = 0;                                      
+                    data.forEach((webhook) => {
+                        webhook.eventTypes.forEach((event) => {
+                            if (!webhookWebhookEventDict[event])
+                                webhookWebhookEventDict[event] = []
+                            webhookWebhookEventDict[event].push(webhook.webhookId);
+                            
+                        })
+                    })
+                    console.log("dict is: \n");
+                    console.log(webhookWebhookEventDict);
+                    var webhookEventMessage = '';
+                    for (var key in webhookWebhookEventDict)
+                        webhookEventMessage += await addWebhookEventMessage(key, webhookWebhookEventDict[key]);
+                    printWebhookEventMessage(webhookEventMessage);
+                    addRowCount('.js-serial');
+                });                
+            }
+
+            async function printWebhookEventMessage(webhookEventMessage) {
+                $("#messageList").append(
+                    `<table class="table table-striped table-bordered table-hover table-condensed js-serial">
+                            <thead>
+                              <tr>
+                                
+                                <th>Event</th>
+                                <th>Webhook</th>
+                              </tr>
+                            </thead>
+                            <tbody>${webhookEventMessage}</tbody></table>`
+                );
+            }
+
+            async function addWebhookEventMessage(key, value) {
+                var webhookId = ''
+                value.forEach((webhook) => {
+                    console.log("\neach webhookid is ", webhook)
+                    webhookId += webhook + "<br />";
+                })
+                var webhookEventMessage =
+                    "<tr>" +
+                   // "<td>" + "1" + "</td>" +
+                    "<td>" + key + "</td>" +
+                    "<td>" + webhookId + "</td>" +                    
+                    "</tr>";
+                return webhookEventMessage;
+            }
+            socket.on('new event', addMessage)
 
             function makeNewWebhookVisible() {
                 $("#newWebhook").toggleClass('invisible');
+            }
+            function addMessage(body) {
+                var payload;
+                for (var key in (body)) {
+                    if (!(body).hasOwnProperty(key)) continue;
+                    var obj = (body)[key];
+                    for (var prop in obj) {
+                        if (!obj.hasOwnProperty(prop)) continue;
+                        //webhookList.push(obj[prop]);
+                        else if (prop == "payload") {
+                            payload = JSON.stringify(obj[prop]);
+                            continue;
+                        }
+                        $("#message").append(`<h5> ${prop}: ${obj[prop]} </h5>`);
+                    }
+                }
+                $("#message").append(`<h5> Payload: ${payload} </h5>`);
             }
 
             function addEventMessage(data) {
                 //$("#messageList").append(`<p> Event Name is ${data.event_name} and Webhook id is ${data.webhook_id} </p>`)
                 console.log("\n entered addEventMessage in index");
-                $("#messageList").append(`<h5> ${data} </h5>`);
+                //$("#messageList").append(`<h5> ${data} </h5>`);
+                data.forEach((value) => { $("#messageList").append(`<h5> ${value} </h5>`) })
             }
+
             function getEvents() {
                 $.get('http://127.0.0.1:8000/events', (data) => {
                     console.log("\nindexxx get events\n")
                     console.log("available events are ", data);
                     $("#messageList").append(" Available Events are: \n");
-                    data.forEach(addEventMessage)
+                    //data.forEach(addEventMessage)
+                    addEventMessage(data);
                 })
             }
 
@@ -70,7 +161,7 @@
                 })
                 var webhookMessage =
                     "<tr>" +
-                    "<td>" + "1" + "</td>" +
+                    
                     "<td>" + data.webhookId + "</td>" +
                     "<td>" + data.name + "</td>" +
                     "<td>" + data.status + "</td>" +
@@ -90,16 +181,17 @@
                         webhookMessage += await addWebhookMessage(data[i]);
                     console.log(" Available Webhooks are: \n");
                     printWebhookMessage(webhookMessage);
+                    addRowCount('.js-serial');
                 });
 
             }
 
             async function printWebhookMessage(webhookMessage) {
                 $("#messageList").append(
-                    `<table class="table table-striped table-bordered table-hover table-condensed">
+                    `<table class="table table-striped table-bordered table-hover table-condensed js-serial">
                             <thead>
                               <tr>
-                                <th>#</th>
+                                
                                 <th>ID</th>
                                 <th>Name</th>
                                 <th>Status</th>
@@ -110,19 +202,30 @@
                             <tbody>${webhookMessage}</tbody></table>`
                 );
             }
-            
-            function postNotifications(message) {
-                $.post('http://127.0.0.1:8000/notifications', message, (res) => $("#messageList").append("message posted",res))
+                        
+            function addRowCount(tableAttr) {
+                $(tableAttr).each(function () {
+                    $('th:first-child, thead td:first-child', this).each(function () {
+                        var tag = $(this).prop('tagName');
+                        $(this).before('<' + tag + '>#</' + tag + '>');
+                    });
+                    $('td:first-child', this).each(function (i) {
+                        $(this).before('<td>' + (i + 1) + '</td>');
+                    });
+                });
             }
 
+            //function postNotifications(message) {
+            //    $.post('http://127.0.0.1:8000/notifications', message)
+            //}
         </script>
     </body>
 </html>
 
 <!--
     
-    1. add a new webhook - atleast opne url and event must be specifies for new webhook
-    2. edit a webhook to modify events and url
-    3. populate the SNo for webhook table
+   
+    2. edit a webhook to modify events and url--same page for add and edit
+    3. unsubscribe from selected events
 
     -->
