@@ -1,0 +1,17 @@
+.btn.btn-default {
+    margin: 5px;
+    width: 600px;
+    text-align: left;
+}
+
+.btn span.glyphicon {    			
+    opacity: 0;				
+}
+
+.btn.active span.glyphicon {				
+opacity: 1;				
+}
+
+/* .btn.btn-default.green {
+    background-color: limegreen;
+} */
