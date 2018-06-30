@@ -18,105 +18,114 @@
         <br />
         <div class="row">
 
-            <div class="column classWithPad" style="background-color:#d9de94;">content 1</div>
-            <!--<div class="column classWithPad" style="background-color:#90cdd3;">
-                <div id="eventchart" style="height:200px"></div>
-            </div>-->
-            <div class="column classWithPad" style="background-color:#c9a3d8;">content 3</div>
-        </div>
-        <div class="row">
-            <div class="col" >
-                <div id="eventchart" style="height:300px; width:800px"></div>
+            <!--<div class="col">-->
+            <div class="column">
+                <div class="graph-container">
+                    <div class="caption"><b>Event Tracker</b></div>
+                    <div id="eventchart" style="height:300px; width:100%"></div>
+                </div>
             </div>
+            <!--</div>-->
+            <!--<div class="col">-->
+            <!--<div class="column">
+                <div class="graph-container">
+                    <div class="caption">Event Tracker</div>
+                    <div style="height:300px; width:100%">wdfewrewrr</div>
+                </div>
+            </div>-->
+
+            <!--</div>-->
         </div>
+
+        <hr />
     </div>
-    <script>
-        renderLiveEventGraph();
-        function renderLiveEventGraph() {
-            console.log("\n ****inside renderLiveEventGraph****\n");
-            var stopGraphUpdate;
-            var contentList = [];
-            console.log("\n before get in render func");
-            $.getJSON('/notifications', function (results) {
-                //console.log(Object.keys(results.eventData[0])[0] + "  " + Object.keys(results.eventData[0])[1])
-                console.log("results.eventdata", results.eventData);
-                mainGraph = new Morris.Area({
-                    behaveLikeLine: true,
-                    element: 'eventchart',
-                    data: [results.eventData],
-                    
-                    //xkey: (Object.keys(results.eventData[0])[0]).toString(),
-                    xkey: 'day',
-                    //xLabels: 'day',
-                    //xLabelFormat: function (day) {
-                    //    return day.getDate() + '/' + (day.getMonth() + 1) + '/' + day.getFullYear();
-                    //},
-                    ykeys: ['event1', 'event2'],
-                    labels: ['event1', 'event2'],
-                    xLabelAngle: 60,
-                    xLabelMargin: 10,
-                    //eventLineColors: ['#d9de94', '#fe7874',],
-                    //grid: false,
-                    ymin: 0,
-                    ymax: 35,
-                    numLines: 8,
-                    hideHover: 'auto',
-                    resize: true,
-                    lineColors: ['red', 'blue'],
-                    fillOpacity: 0.4,
-                    pointFillColors: ['#ffffff'],
-                    pointStrokeColors: ['black'],
-                    //dateFormat: function (day) {
-                    //    d = new Date(day);
-                    //    return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
-                    //},
+        <script>
+            renderLiveEventGraph();
+            function renderLiveEventGraph() {
+                console.log("\n ****inside renderLiveEventGraph****\n");
+                var stopGraphUpdate;
+                var contentList = [];
+                console.log("\n before get in render func");
+                $.getJSON('/notifications', function (results) {
+                    //console.log(Object.keys(results.eventData[0])[0] + "  " + Object.keys(results.eventData[0])[1])
+                    console.log("results.eventdata", results.eventData);
+                    mainGraph = new Morris.Area({
+                        behaveLikeLine: true,
+                        element: 'eventchart',
+                        data: [results.eventData],
+
+                        //xkey: (Object.keys(results.eventData[0])[0]).toString(),
+                        xkey: 'day',
+                        //xLabels: 'days',
+                        //xLabelFormat: function (day) {
+                        //    return day.getDate() + '/' + (day.getMonth() + 1) + '/' + day.getFullYear();
+                        //},
+                        ykeys: ['event1', 'event2', 'event3', 'event4'],
+                        labels: ['event1', 'event2', 'event3', 'event4'],
+                        xLabelAngle: 60,
+                        xLabelMargin: 10,
+                        //eventLineColors: ['#d9de94', '#fe7874',],
+                        //grid: false,
+                        ymin: 0,
+                        ymax: 35,
+                        numLines: 8,
+                        hideHover: 'auto',
+                        resize: true,
+                        lineColors: ['red', 'blue', 'green', 'pink', 'grey'],
+                        fillOpacity: 0.4,
+                        pointFillColors: ['#ffffff'],
+                        pointStrokeColors: ['black'],
+                        //dateFormat: function (day) {
+                        //    d = new Date(day);
+                        //    return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+                        //},
+                    });
+                    contentList.push(results.eventData);
+                    console.log("\n after plotting\n");
+                    stopGraphUpdate = setInterval(function () {
+                        console.log("\n in set interval\n");
+
+                        updateLiveEventGraph(mainGraph, contentList);
+                    }, 2000);
                 });
-                contentList.push(results.eventData);
-                console.log("\n after plotting\n");
-                stopGraphUpdate = setInterval(function () {
-                    console.log("\n in set interval\n");
+                $.ajaxSetup({
+                    "error": function () {
+                        clearInterval(stopGraphUpdate);
+                        console.log("stopped calling graph update func");
+                    }
+                });
 
-                    updateLiveEventGraph(mainGraph, contentList);
-                }, 2000);
-            });
-            $.ajaxSetup({
-                "error": function () {
-                    clearInterval(stopGraphUpdate);
-                    console.log("stopped calling graph update func");
-                }
-            });
-            
-        }
+            }
 
-        
 
-        function updateLiveEventGraph(mainGraph, contentList) {
-            // Make our API call again, requesting fresh data
-            console.log("\n in updatdefunc\n");
-            
-            console.log("\n before get in update func");
-            $.getJSON({ url: '/notifications', dataType: 'json' }, function (results) {
-                // Set the already-initialised graph to use this new data
-                console.log("\n going to set maingraph data in update func\n", results.eventData);
-                if (results.eventData != "undefined") {
-                    console.log("entered if maingraph", contentList)
-                    console.log("entered if new data", results.eventData)
-                    //mainGraph.data.src.push(results.eventData)
-                    contentList.push(results.eventData)
-                    if (contentList.length > 10)
-                        contentList.shift();
-                    //console.log("after push", mainGraph.data)
-                    mainGraph.setData(contentList); 
-                    console.log("after setdata");
-                                       
-                }
-                else
-                    console.log("\n error received at result para", results.error)
-                
-            })
-            //.fail(function () { alert('getJSON request failed! '); })
 
-        }
-    </script>
-</body >
-</html >
+            function updateLiveEventGraph(mainGraph, contentList) {
+                // Make our API call again, requesting fresh data
+                console.log("\n in updatdefunc\n");
+
+                console.log("\n before get in update func");
+                $.getJSON({ url: '/notifications', dataType: 'json' }, function (results) {
+                    // Set the already-initialised graph to use this new data
+                    console.log("\n going to set maingraph data in update func\n", results.eventData);
+                    if (results.eventData != "undefined") {
+                        console.log("entered if maingraph", contentList)
+                        console.log("entered if new data", results.eventData)
+                        //mainGraph.data.src.push(results.eventData)
+                        contentList.push(results.eventData)
+                        if (contentList.length > 10)
+                            contentList.shift();
+                        //console.log("after push", mainGraph.data)
+                        mainGraph.setData(contentList);
+                        console.log("after setdata");
+
+                    }
+                    else
+                        console.log("\n error received at result para", results.error)
+
+                })
+                //.fail(function () { alert('getJSON request failed! '); })
+
+            }
+        </script>
+    </body >
+    </html >
