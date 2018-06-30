@@ -1,0 +1,44 @@
+.column {
+    float: left;
+    width: 100%;
+    padding: 5px;
+}
+
+/* Clear floats after the columns */
+.row:after, .row:before {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.row:after {
+    line-height:0;
+}
+
+@media screen and (max-width: 600px) {
+    .column {
+        width: 100%;
+    }
+}
+
+.graph-container .caption {
+    text-align: center;
+}
+
+.graph-container {
+    padding: 10px;
+    border: 1px solid #ccc;
+    box-shadow: 1px 1px 2px #eee;
+    margin: 10px 0;
+    position: relative;
+
+}
+
+.row {
+    margin-left: -10px;
+}
+
+div {
+    display: block;
+}
+
