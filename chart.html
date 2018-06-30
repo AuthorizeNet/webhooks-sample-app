@@ -1,6 +1,7 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/morris.js/0.5.1/morris.css">
@@ -100,12 +101,9 @@
 
 
             function updateLiveEventGraph(mainGraph, contentList) {
-                // Make our API call again, requesting fresh data
                 console.log("\n in updatdefunc\n");
-
                 console.log("\n before get in update func");
                 $.getJSON({ url: '/notifications', dataType: 'json' }, function (results) {
-                    // Set the already-initialised graph to use this new data
                     console.log("\n going to set maingraph data in update func\n", results.eventData);
                     if (results.eventData != "undefined") {
                         console.log("entered if maingraph", contentList)
@@ -117,14 +115,11 @@
                         //console.log("after push", mainGraph.data)
                         mainGraph.setData(contentList);
                         console.log("after setdata");
-
                     }
                     else
                         console.log("\n error received at result para", results.error)
 
                 })
-                //.fail(function () { alert('getJSON request failed! '); })
-
             }
         </script>
     </body >
