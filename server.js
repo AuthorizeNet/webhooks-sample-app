@@ -8,17 +8,17 @@ const socketIo = require("socket.io");
 const server = http.Server(app);
 const cors = require("cors");
 const io = socketIo(server);
-
 const config = require("./config");
+const loki = require("lokijs");
 
 const encodedString = Buffer.from(config.apiLoginId + ":" +
-                                  config.transactionKey).toString("base64");
+                                config.transactionKey).toString("base64");
 
 const headers = { "content-type": "application/json",
-"Authorization": "Basic " + encodedString };
+                "Authorization": "Basic " + encodedString };
 
-console.log("process.env node_env: ", process.env.NODE_ENV);
-console.log("process.env hashed key: ", process.env.hashed_key);
+// console.log("process.env node_env: ", process.env.NODE_ENV);
+// console.log("process.env hashed key: ", process.env.hashed_key);
 
 const eventRequestData = {
     url: config.apiEndpoint + "/eventtypes",
@@ -44,7 +44,20 @@ app.use(express.static(__dirname));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-var eventFrequencyMap = {}
+var eventFrequencyMap = {};
+var db = new loki("notification.db", {
+	autoload: true,
+	autoloadCallback : databaseInitialize,
+	autosave: true, 
+	autosaveInterval: 4000
+});
+
+function databaseInitialize() {
+    if (!db.getCollection("users")) {
+      db.addCollection("users");
+    }
+}
+console.log("current values in db", db.addCollection("users").find());
 
 function parseBody(res, body) {
     try {
@@ -56,7 +69,7 @@ function parseBody(res, body) {
             res.send(errorMessage);
         }
         else {
-            errorMessage.message = "Error";
+            errorMessage.message = "Some Error occured";
             res.send(errorMessage);
         }
     }
@@ -102,13 +115,19 @@ app.get("/webhooks/add", function (req, res) {
 });
 
 app.post("/notifications", function (req, res) {
-    console.log("Got a post request at notifications page", JSON.stringify(req.body));
-    //response_event.push(req.body);
-    incrementEventOccurrence(req.body.eventType)
+    incrementEventOccurrence(req.body.eventType);
+    notifications = db.getCollection("notifications");
+    notifications.insert(req.body);
+    db.saveDatabase();
     io.emit("new event", {
         eventDetails: (req.body),
         eventsCount: eventFrequencyMap,
     })
+
+    console.log("current values in db", notifications.find());
+    // to delete all docs in collection
+    // notifications.chain().remove();
+    // console.log("after removing values in db", notifications.find());
     res.sendStatus(200);
 })
 
@@ -165,4 +184,4 @@ app.use((req, res, next) => {
 
 var myServer = server.listen(config.app.port, "localhost", function () {
     console.log("Example app listening on port ", server.address().port)
-})
+});

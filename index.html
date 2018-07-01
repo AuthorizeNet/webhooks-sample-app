@@ -8,10 +8,13 @@
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
         <script src="/socket.io/socket.io.js"></script>
+        <script src="https://code.highcharts.com/highcharts.src.js"></script>
+        <script src="https://code.highcharts.com/modules/exporting.js"></script>
+        <script src="https://code.highcharts.com/modules/export-data.js"></script>
     </head>
     <body>
-        <div class="jumbotron">
-                <h2 class="diplay-4" style="text-align:center">Webhook Manager</h2>
+        <div class="jumbotron container-fluid" style="padding-bottom: 0;padding-top: 0">
+                <h2 style="text-align:center">Webhook Manager</h2>
                 <br />
                 <div class="btn-group btn-group-justified">
                     <div class="btn-group">
@@ -32,66 +35,88 @@
                 </div>    
         </div>
 
-        <div class="container" style="width: 1000px; margin-left: 0;">
+        <div class="container">
             <br />  
-            <div id="eventsCount" style="width: 400px; margin-left: 1100px;" >
-                <div class="btn-group-toggle" data-toggle="buttons" id="divEventsCount"></div>            
-            </div>    
-            <button id="newWebhook" class="btn btn-info invisible" target="_blank">Create new Endpoint</button>
-            <div id="message">            
+            <button id="newWebhook" class="btn btn-info" target="_blank">Create new Endpoint</button>
+            <div id="message" style="width: 80%; margin: auto;">            
                 <div id="messageList"></div>
                 <div id="enrolledEventList"></div>
-                <div id="currentEventList">
-                    <div style="text-align: left;" class="panel-group" id="panelCurrentEvent"></div>
+            </div>
+            <div class="row">
+                <div class="col-md-8" id="currentEventList" >
+                        <div style="text-align: left;" class="panel-group" id="panelCurrentEvent"></div>
+                </div>
+                <div class="col-md-4" id="eventsCount" >
+                    <div class="btn-group-toggle" data-toggle="buttons" id="divEventsCount"></div>            
                 </div>
             </div>
+
         </div>
+        <div id="includedContent" style="display: none"></div>
 
         <script>
-            var socket = io()
+            var socket = io();
             $(() => {
+                
+                $("#includedContent").load("mainChart.html");
+                $("#includedContent").css("display", "none");
+                $("#eventsCount").css("display", "none"); 
+                $("#newWebhook").css("display", "none");
+                $("#currentEventList").css("display", "none"); 
+                
                 $("#event").click(() => {
-                    var message = "hello post messages"
                     $("#messageList").text("");
-                    var newWebhookElement = document.getElementById("newWebhook");
-                    if (! $("#newWebhook").hasClass("invisible"))
-                        $("#newWebhook").toggleClass('invisible');                    
+                    $("#includedContent").css("display", "none");
+                    $("#newWebhook").css("display", "none"); 
+                    $(".container").css("display", "block");
+                    $("#currentEventList").css("display", "none");
+                    $("#eventsCount").css("display", "none");
+
                     getEvents();
-                })
+                });
 
                 $("#webhook").click(async () => {
-                    $("#messageList").text("");
+                    $("#messageList").text("");                    
+                    $("#includedContent").css("display", "none"); 
+                    $(".container").css("display", "block");
+                    $("#currentEventList").css("display", "none");
+                    $("#eventsCount").css("display", "none");
+
                     getWebhooks();
-                    $("#newWebhook").toggleClass('invisible');
-                })
+
+                    $("#newWebhook").css("display", "block");
+                });
                 
                 $("#newWebhook").click(() => {
                     location.href = "./newWebhook.html";                    
-                })
+                });
 
                 $("#chart").click(() => {
-                    location.href = "./chart.html";
-                })
+                    // location.href = "./highchart.html";
+                    $(".container").css("display", "none");
+                    $("#includedContent").css("display", "block");
+                });
 
                 $("#enrolledEvents").click(async function(){
                     $("#messageList").text("");
-                    if (! $("#newWebhook").hasClass("invisible"))
-                        $("#newWebhook").toggleClass('invisible');                    
+                    $("#newWebhook").css("display", "none");
+                    $("#includedContent").css("display", "none");
                     $("#messageList").text("");
                     await getWebhookEventDetails();
                                         
-                })
+                });
 
                  $("#currentEvents").click(async () => {
                     $("#messageList").text("");
                     $("#enrolledEventList").text("");
-                    
-                    if (! $("#newWebhook").hasClass("invisible"))
-                        $("#newWebhook").toggleClass('invisible');                   
-                })
-                
-            })
-
+                    $("#includedContent").css("display", "none"); 
+                    $(".container").css("display", "block");
+                    $("#eventsCount").css("display", "block"); 
+                    $("#newWebhook").css("display", "none");
+                    $("#currentEventList").css("display", "block"); 
+                });
+            });
+            
             async function getWebhookEventDetails() {
                 var webhookWebhookEventDict = {};
                
