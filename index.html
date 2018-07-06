@@ -188,17 +188,20 @@
             function onNewEvent(body) {
                 var eventName = extracteventNameFromEventType(body.eventDetails.eventType);
                 displayEventMessage(eventName, body.eventDetails);
-                displayEventsCount(body.eventDetails.eventType, body.eventsCount);
+                displayEventsCount(body.eventDetails.eventType, body.eventsCountList);
             }
             // Display each events occurence count on the right side 
-            function displayEventsCount(eventType, eventsCount) {
+            function displayEventsCount(eventType, eventsCountList) {
+                console.log("in displayEventsCount func");
                 var eventsCountDiv = document.getElementById("divEventsCount");
-                console.log(eventsCount);
+                console.log("eventsCountList is: \n", eventsCountList);
                 //eventType = "net.authorize.payment.created";
-                if(eventsCount[eventType] > 1) {
+                var currentEvent = eventsCountList.find( (event) => event.eventType === eventType);
+                console.log("currentevent map: \n", currentEvent);
+                if(currentEvent.count > 1) {
                     console.log("yes");
-                    document.getElementById(eventType).getElementsByTagName("span")[1].textContent = eventsCount[eventType];
-                    console.log("new badge value: ", eventsCount[eventType]);
+                    document.getElementById(eventType).getElementsByTagName("span")[1].textContent = currentEvent.count;
+                    console.log("new badge value: ", currentEvent.count);
                 }                
                 else {
                     console.log("no");
@@ -220,7 +223,7 @@
                     var spnBadge = document.createElement("span");
                     spnBadge.classList.add("badge");
 
-                    var textEventCount = document.createTextNode("" + eventsCount[eventType]);
+                    var textEventCount = document.createTextNode("" + currentEvent.count);
                     spnBadge.appendChild(textEventCount);
                     newLabel.appendChild(spnBadge);
                     
