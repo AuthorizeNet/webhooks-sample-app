@@ -17,9 +17,6 @@ const encodedString = Buffer.from(config.apiLoginId + ":" +
 const headers = { "content-type": "application/json",
                 "Authorization": "Basic " + encodedString };
 
-// console.log("process.env node_env: ", process.env.NODE_ENV);
-// console.log("process.env hashed key: ", process.env.hashed_key);
-
 const eventRequestData = {
     url: config.apiEndpoint + "/eventtypes",
     method: "GET",
@@ -44,7 +41,8 @@ app.use(express.static(__dirname));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-var eventFrequencyMap = {};
+var noOfDaysGraph = 7;
+var dbSize = 5;
 var db = new loki("notification.db", {
 	autoload: true,
 	autoloadCallback : databaseInitialize,
@@ -53,11 +51,49 @@ var db = new loki("notification.db", {
 });
 
 function databaseInitialize() {
-    if (!db.getCollection("users")) {
-      db.addCollection("users");
+    if (!db.getCollection("notifications")) {
+        db.addCollection("notifications");
+    }
+
+    if (!db.getCollection("eventsFrequency")) {
+        db.addCollection("eventsFrequency");
     }
 }
-console.log("current values in db", db.addCollection("users").find());
+console.log("-------------------------------");
+
+function calculateLastXDays(x) {
+    var recentDateMap = {};
+    while (x > 0) {
+        var tempDate = new Date(new Date().setDate(new Date().getDate()- x + 1)).toISOString().slice(0, 10);
+        recentDateMap[tempDate] = 0;
+        --x;
+    }
+    return recentDateMap;
+}
+
+function getRecentPayment(x) {
+    var recentDateMap = calculateLastXDays(x);
+    var notifications =  db.getCollection("notifications");
+    var paymentDocs = notifications.find({eventType: 
+        { $in: 
+            [
+                'net.authorize.payment.authcapture.created', 
+                'net.authorize.payment.priorAuthCapture.created',
+                'net.authorize.payment.capture.created'
+            ]
+        } 
+    });
+    // console.log("payment doc count: ", paymentDocs.length)
+    paymentDocs.forEach(element => {
+        var elementDate = new Date(element.eventDate).toISOString().slice(0, 10);
+        if(elementDate in recentDateMap) {
+            recentDateMap[elementDate] +=  parseInt(element.payload.authAmount);;
+        }
+    });
+    // console.log("recentdate map is\n ", recentDateMap);
+    return recentDateMap;
+
+}
 
 function parseBody(res, body) {
     try {
@@ -114,39 +150,55 @@ app.get("/webhooks/add", function (req, res) {
     res.send("hello");
 });
 
+
 app.post("/notifications", function (req, res) {
-    incrementEventOccurrence(req.body.eventType);
-    notifications = db.getCollection("notifications");
+    var notifications = db.getCollection("notifications");
+    if (notifications.count() == dbSize) {
+        // Get oldest entry available in the DB (event with oldest eventDate)
+        var oldestNotification = notifications.chain().simplesort("eventDate").limit(1).data();
+        notifications.remove(oldestNotification);
+        // Decrement the oldest event's count in eventsFrequency collection
+        decrementEventOccurrence(oldestNotification[0].eventType);
+    }
     notifications.insert(req.body);
-    db.saveDatabase();
+    incrementEventOccurrence(req.body.eventType);
+
+    // console.log("after inserting \n", notifications.find());
+    var eventsFrequency = db.getCollection("eventsFrequency");
+    var eventsfrequencyWithoutMetadata = eventsFrequency.chain().data({removeMeta: true});
     io.emit("new event", {
         eventDetails: (req.body),
-        eventsCount: eventFrequencyMap,
+        eventsCount: eventsfrequencyWithoutMetadata,
     })
-
-    console.log("current values in db", notifications.find());
-    // to delete all docs in collection
-    // notifications.chain().remove();
-    // console.log("after removing values in db", notifications.find());
+    
     res.sendStatus(200);
 })
 
-var increment = 1;
-
-function incrementEventOccurrence(event) {
-    console.log("occured event is in neweventgraph func:", event);
-    if (event in eventFrequencyMap) {
-        eventFrequencyMap[event]++;
-    }
-    else
-        eventFrequencyMap[event] = 1;
-    console.log("and map value is: ", eventFrequencyMap)
+function decrementEventOccurrence(event) {
+    var eventsFrequency = db.getCollection("eventsFrequency");
+    var currentEvent = eventsFrequency.findOne({eventType: event });
+    currentEvent.count = currentEvent.count - 1;
+    eventsFrequency.update(currentEvent);
+    console.log("count reduced for the event ", event);
 }
 
-app.get("/notifications", function (req, res) {
-    console.log("\n ****inside get notifications****\n");
+function incrementEventOccurrence(event) {
+    console.log("occured event in incrementEventOccurrence: ", event);
+    var eventsFrequency = db.getCollection("eventsFrequency");
+
+    var currentEvent = eventsFrequency.findOne({eventType: event });
+    if(currentEvent) {
+        currentEvent.count = currentEvent.count + 1;
+        eventsFrequency.update(currentEvent);
+    }
+    else
+        eventsFrequency.insert({eventType: event, count: 1});
+    console.log("after inserting eventfrequency \n", eventsFrequency.find());
+}
+
+app.get("/notifications", async function (req, res) {
+    var recentDateMap = await getRecentPayment(noOfDaysGraph);
     res.format({
-        // Respond to browser requests with the 404 page
         html: function () {
             console.log("\n inside html\n");
             res.json({
@@ -154,25 +206,8 @@ app.get("/notifications", function (req, res) {
             });
         },
         json: function () {
-            console.log("\n inside json\n");
-            //var eventData = [];
-            var eventPoint = {};
-            min = Math.ceil(0);
-            max = Math.floor(25);
-            var rand = Math.floor(Math.random() * (max - min)) + min;
-            eventPoint.day = new Date();
-            //eventPoint.day = increment;
-            ++increment;
-            eventPoint.event1 = rand;
-            eventPoint.event2 = rand + 5;
-            eventPoint.event3 = 0;
-            eventPoint.event4 = 0;
-            //eventData.push(eventPoint);
-            console.log("\n going to send json response in get method\n", eventPoint);
             res.json({
-                //eventData: eventData
-                eventData: eventPoint,
-                //eventData: eventFrequencyMap,
+                paymentDetail: recentDateMap,
             });
         }
     })
