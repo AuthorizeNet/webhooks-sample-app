@@ -17,7 +17,7 @@
                 <h2 style="text-align:center">Webhook Manager</h2>
                 <br />
                 <div class="btn-group btn-group-justified">
-                    <div class="btn-group">
+                    <!-- <div class="btn-group">
                         <button type="button" id="event" class="btn btn-primary">All Events</button>
                     </div>
                     <div class="btn-group">
@@ -25,18 +25,18 @@
                     </div>
                     <div class="btn-group">
                         <button type="button" id="enrolledEvents" class="btn btn-primary">Enrolled Events</button>
+                    </div> -->
+                    <div class="btn-group">
+                        <button type="button" id="currentEvents" class="btn btn-primary">Event Monitoring</button>
                     </div>
                     <div class="btn-group">
-                        <button type="button" id="currentEvents" class="btn btn-primary">Current Events</button>
-                    </div>
-                    <div class="btn-group">
-                        <button type="button" id="chart" class="btn btn-primary">Charts</button>    
+                        <button type="button" id="chart" class="btn btn-primary">Dashboard</button>    
                     </div>
                 </div>    
         </div>
 
         <div class="container">
-            <br />  
+            <br />
             <button id="newWebhook" class="btn btn-info" target="_blank">Create new Endpoint</button>
             <div id="message" style="width: 80%; margin: auto;">            
                 <div id="messageList"></div>
@@ -52,7 +52,7 @@
             </div>
 
         </div>
-        <div id="includedContent" style="display: none"></div>
+        <div id="includedContent" style="display: none;"></div>
 
         <script>
             var socket = io();
@@ -168,6 +168,8 @@
                     "</tr>";
                 return webhookEventMessage;
             }
+
+            // Call onNewEvent method when a new event occurs
             socket.on('new event', onNewEvent)
 
             function extracteventNameFromEventType(eventType) {
@@ -175,8 +177,8 @@
                 console.log("event is ", eventName);
                 return eventName;
             }
-            
-            function extracteventDate(eDate) {
+            // Converting "2018-07-21T20:52:59.2144524Z" to "2018-07-21 20:52:59"
+            function formatEventDate(eDate) {
                 var eventDate = eDate.split('T');
                 eventDate[1] = eventDate[1].split('.')[0];
                 eventDate = eventDate.join(' ');
@@ -188,8 +190,7 @@
                 displayEventMessage(eventName, body.eventDetails);
                 displayEventsCount(body.eventDetails.eventType, body.eventsCount);
             }
-            // use localstorage or sessionstorage or cookie to persist the
-            // browser reload. use in-memory storage
+            // Display each events occurence count on the right side 
             function displayEventsCount(eventType, eventsCount) {
                 var eventsCountDiv = document.getElementById("divEventsCount");
                 console.log(eventsCount);
@@ -198,24 +199,19 @@
                     console.log("yes");
                     document.getElementById(eventType).getElementsByTagName("span")[1].textContent = eventsCount[eventType];
                     console.log("new badge value: ", eventsCount[eventType]);
-                    
-
                 }                
                 else {
                     console.log("no");
                     var newLabel = document.createElement("label");
                     newLabel.id = eventType;
-                    newLabel.classList.add("btn");
-                    newLabel.classList.add("btn-default");
-                    newLabel.classList.add("active");
+                    newLabel.classList.add("btn", "btn-default", "active");
                     
                     var inputCbx = document.createElement("input");
                     inputCbx.type = "checkbox";
                     newLabel.appendChild(inputCbx);
 
                     var spnTick = document.createElement("span");
-                    spnTick.classList.add("glyphicon");
-                    spnTick.classList.add("glyphicon-ok");
+                    spnTick.classList.add("glyphicon", "glyphicon-ok");
                     newLabel.appendChild(spnTick);
 
                     var textEventName = document.createTextNode(" " + eventType + " ");
@@ -232,44 +228,46 @@
                 }
             }
 
+            // Display new event's timestamp, eventtype and payload as and when it occurs.
             function displayEventMessage(eventName, eventDetails) {
                 var payload;
-                var eventDate = extracteventDate(eventDetails.eventDate);
+                var eventDate = formatEventDate(eventDetails.eventDate);
                 var mainPanel = document.getElementById("panelCurrentEvent");
                 console.log("child count: ", mainPanel.childElementCount);
                 if(mainPanel.childElementCount == 5)
                     mainPanel.removeChild(mainPanel.lastChild);
                 var newPanel = document.createElement("div");
-                newPanel.classList.add("panel");
-                newPanel.classList.add("panel-success");
+                newPanel.classList.add("panel", "panel-success");
                 
-                var newPanelHead = document.createElement("div");
-                newPanelHead.classList.add("panel-heading");
-                var textnode = document.createTextNode("" + eventName + "  at " + eventDate);
-                newPanelHead.appendChild(textnode);
-                
-                var newPanelBody = document.createElement("div");
-                newPanelBody.classList.add("panel-body");
+                var newPanelRow = document.createElement("div");
+                newPanelRow.classList.add("row");
+                newPanelRow.setAttribute("style", "background-color: khaki;")
 
-                var buttonJson = document.createElement("button");
-                buttonJson.classList.add("btn");
-                buttonJson.classList.add("btn-info");
-                buttonJson.classList.add("btn-sm");
-                buttonJson.setAttribute("data-toggle", "collapse");
-                buttonJson.setAttribute("data-target", "#" + eventDetails.notificationId);
-                var textnode = document.createTextNode("Inspect json");
-                buttonJson.appendChild(textnode);
-                newPanelBody.appendChild(buttonJson);
-                
-                var jsonContent = document.createElement("div");
-                jsonContent.classList.add("collapse");
-                jsonContent.id= eventDetails.notificationId;
-                var jsonTextNode = document.createTextNode(JSON.stringify(eventDetails));
-                jsonContent.appendChild(jsonTextNode);
-                newPanelBody.appendChild(jsonContent);
+                var newPanelColTimestamp = document.createElement("div");
+                newPanelColTimestamp.classList.add("col-md-2");
+                var ColTimestampTextnode = document.createTextNode("" + eventDate);
+                newPanelColTimestamp.appendChild(ColTimestampTextnode);
 
-                newPanel.appendChild(newPanelHead);
-                newPanel.appendChild(newPanelBody);
+                var newPanelColEventtype = document.createElement("div");
+                newPanelColEventtype.classList.add("col-md-5");
+                var ColEventtypeTextnode = document.createTextNode("" + eventDetails.eventType);
+                // ColEventtypeTextnode.setAttribute("word-break", "break-word")
+                newPanelColEventtype.appendChild(ColEventtypeTextnode);
+
+                var newPanelColPayload = document.createElement("div");
+                newPanelColPayload.classList.add("col-md-5");
+                var ColPayloadTextnode = document.createElement("pre");
+                ColPayloadTextnode.setAttribute("style", "background-color: lightgreen;");
+                // Remove '{' and '}' from JSON String 
+                var formatedPayload = JSON.stringify(eventDetails.payload, null, "\t").slice(2).slice(0, -1);
+                ColPayloadTextnode.textContent = formatedPayload;
+                newPanelColPayload.appendChild(ColPayloadTextnode);
+
+                newPanelRow.appendChild(newPanelColTimestamp);
+                newPanelRow.appendChild(newPanelColEventtype);
+                newPanelRow.appendChild(newPanelColPayload);
+                
+                newPanel.appendChild(newPanelRow);
                
                 newPanel.animate([
                     // keyframes
@@ -311,7 +309,6 @@
                     console.log("\neach webhookid is ", event)
                     eventTypes += event + "<br />";
                 })
-
                 var webhookMessage =
                     "<tr>" +
                     "<td>" + data.webhookId + "</td>" +
@@ -372,8 +369,3 @@
         </script>
     </body>
 </html>
-
-<!--
-    2. edit a webhook to modify events and url--same page for add and edit
-    3. unsubscribe from selected events
--->
