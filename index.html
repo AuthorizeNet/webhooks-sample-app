@@ -17,15 +17,6 @@
                 <h2 style="text-align:center">Webhook Manager</h2>
                 <br />
                 <div class="btn-group btn-group-justified">
-                    <!-- <div class="btn-group">
-                        <button type="button" id="event" class="btn btn-primary">All Events</button>
-                    </div>
-                    <div class="btn-group">
-                        <button type="button" id="webhook" class="btn btn-primary">Webhooks</button>
-                    </div>
-                    <div class="btn-group">
-                        <button type="button" id="enrolledEvents" class="btn btn-primary">Enrolled Events</button>
-                    </div> -->
                     <div class="btn-group">
                         <button type="button" id="currentEvents" class="btn btn-primary">Event Monitoring</button>
                     </div>
@@ -35,88 +26,43 @@
                 </div>    
         </div>
 
-        <div class="container">
-            <br />
-            <button id="newWebhook" class="btn btn-info" target="_blank">Create new Endpoint</button>
-            <div id="message" style="width: 80%; margin: auto;">            
-                <div id="messageList"></div>
-                <div id="enrolledEventList"></div>
-            </div>
-            <div class="row">
-                <div class="col-md-8" id="currentEventList" >
-                        <div style="text-align: left;" class="panel-group" id="panelCurrentEvent"></div>
+        <div class="row eventMonitoring" style="width: 90%; margin: 0 auto; text-align: left">
+                <div class="col-md-6" id="currentEventList" style="margin: 0 auto; text-align: left">
+                    <div style="text-align: left;" class="panel-group" id="panelCurrentEvent"></div>
                 </div>
-                <div class="col-md-4" id="eventsCount" >
-                    <div class="btn-group-toggle" data-toggle="buttons" id="divEventsCount"></div>            
+                <div class="col-md-6" style="display: inline;">
+                    <div id="chart5"></div>
+                    <div id="eventsCount" style="display: block;">
+                        <div class="btn-group-toggle" data-toggle="buttons" id="divEventsCount"></div>
+                    </div>
                 </div>
-            </div>
-
         </div>
+
         <div id="includedContent" style="display: none;"></div>
 
         <script>
             var socket = io();
             $(() => {
-                
                 $("#includedContent").load("mainChart.html");
                 $("#includedContent").css("display", "none");
-                $("#eventsCount").css("display", "none"); 
-                $("#newWebhook").css("display", "none");
-                $("#currentEventList").css("display", "none"); 
-                
-                $("#event").click(() => {
-                    $("#messageList").text("");
-                    $("#includedContent").css("display", "none");
-                    $("#newWebhook").css("display", "none"); 
-                    $(".container").css("display", "block");
-                    $("#currentEventList").css("display", "none");
-                    $("#eventsCount").css("display", "none");
-
-                    getEvents();
-                });
-
-                $("#webhook").click(async () => {
-                    $("#messageList").text("");                    
-                    $("#includedContent").css("display", "none"); 
-                    $(".container").css("display", "block");
-                    $("#currentEventList").css("display", "none");
-                    $("#eventsCount").css("display", "none");
-
-                    getWebhooks();
-
-                    $("#newWebhook").css("display", "block");
-                });
-                
-                $("#newWebhook").click(() => {
-                    location.href = "./newWebhook.html";                    
-                });
 
                 $("#chart").click(() => {
-                    // location.href = "./highchart.html";
-                    $(".container").css("display", "none");
+                    $(".eventMonitoring").css("display", "none");
                     $("#includedContent").css("display", "block");
                 });
 
-                $("#enrolledEvents").click(async function(){
-                    $("#messageList").text("");
-                    $("#newWebhook").css("display", "none");
-                    $("#includedContent").css("display", "none");
-                    $("#messageList").text("");
-                    await getWebhookEventDetails();
-                                        
-                });
-
-                 $("#currentEvents").click(async () => {
-                    $("#messageList").text("");
-                    $("#enrolledEventList").text("");
+                $("#currentEvents").click(async () => {
                     $("#includedContent").css("display", "none"); 
-                    $(".container").css("display", "block");
-                    $("#eventsCount").css("display", "block"); 
-                    $("#newWebhook").css("display", "none");
-                    $("#currentEventList").css("display", "block"); 
+                    $(".eventMonitoring").css("display", "block");
                 });
             });
             
+            // Call API to populate the recent events when the either page is initially loaded or refreshed
+            $.getJSON('/recentNotifications', { count: 5 }, function (results) {
+                results.reverse();
+                results.forEach((element) => { console.log(JSON.stringify(element)); displayEventMessage(element.eventType, element); });
+            });
+
             async function getWebhookEventDetails() {
                 var webhookWebhookEventDict = {};
                
@@ -169,14 +115,18 @@
                 return webhookEventMessage;
             }
 
-            // Call onNewEvent method when a new event occurs
-            socket.on('new event', onNewEvent)
+            // Call onNewEvent method when a new event occurs and update graph
+            socket.on('new event', (body) => { 
+                onNewEvent(body);
+                // plotAllGraphs();
+             });
 
             function extracteventNameFromEventType(eventType) {
                 var eventName = eventType.split('.').slice(2).join(' ').toUpperCase();
                 console.log("event is ", eventName);
                 return eventName;
             }
+
             // Converting "2018-07-21T20:52:59.2144524Z" to "2018-07-21 20:52:59"
             function formatEventDate(eDate) {
                 var eventDate = eDate.split('T');
@@ -190,17 +140,18 @@
                 displayEventMessage(eventName, body.eventDetails);
                 displayEventsCount(body.eventDetails.eventType, body.eventsCountList);
             }
+
             // Display each events occurence count on the right side 
             function displayEventsCount(eventType, eventsCountList) {
-                console.log("in displayEventsCount func");
                 var eventsCountDiv = document.getElementById("divEventsCount");
-                console.log("eventsCountList is: \n", eventsCountList);
-                //eventType = "net.authorize.payment.created";
                 var currentEvent = eventsCountList.find( (event) => event.eventType === eventType);
-                console.log("currentevent map: \n", currentEvent);
                 if(currentEvent.count > 1) {
                     console.log("yes");
-                    document.getElementById(eventType).getElementsByTagName("span")[1].textContent = currentEvent.count;
+                    try {
+                        document.getElementById(eventType).getElementsByTagName("span")[1].textContent = currentEvent.count;
+                    }catch(e) {
+                        console.log("error in getting tagname");
+                    }
                     console.log("new badge value: ", currentEvent.count);
                 }                
                 else {
@@ -230,15 +181,15 @@
                     eventsCountDiv.appendChild(newLabel);
                 }
             }
-
+            
             // Display new event's timestamp, eventtype and payload as and when it occurs.
-            function displayEventMessage(eventName, eventDetails) {
+            async function displayEventMessage(eventName, eventDetails) {
                 var payload;
                 var eventDate = formatEventDate(eventDetails.eventDate);
                 var mainPanel = document.getElementById("panelCurrentEvent");
-                console.log("child count: ", mainPanel.childElementCount);
                 if(mainPanel.childElementCount == 5)
                     mainPanel.removeChild(mainPanel.lastChild);
+                
                 var newPanel = document.createElement("div");
                 newPanel.classList.add("panel", "panel-success");
                 
@@ -254,7 +205,6 @@
                 var newPanelColEventtype = document.createElement("div");
                 newPanelColEventtype.classList.add("col-md-5");
                 var ColEventtypeTextnode = document.createTextNode("" + eventDetails.eventType);
-                // ColEventtypeTextnode.setAttribute("word-break", "break-word")
                 newPanelColEventtype.appendChild(ColEventtypeTextnode);
 
                 var newPanelColPayload = document.createElement("div");
@@ -271,7 +221,7 @@
                 newPanelRow.appendChild(newPanelColPayload);
                 
                 newPanel.appendChild(newPanelRow);
-               
+
                 newPanel.animate([
                     // keyframes
                     { transform: 'translateX(300px)' }, 
