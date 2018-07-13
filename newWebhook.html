@@ -1,13 +1,15 @@
 <!doctype html>
-<html>
+<html lang="en">
     <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     </head>
     <body>
-
+        <h2 style="text-align:center">EndPoint Management    </h2>
         <form class="needs-validation" novalidate>
             <div class="container">
                 <br />
@@ -26,7 +28,7 @@
                 <div class="row">
                     <div class="col-md-6 brd">
                         <div class="center-block">
-                            Status:<br />
+                            <b>Status:</b><br />
                             <label class="radio-inline"><input type="radio" name="status" value="active">Active</label>
                         </div>
                         <div class="center-block">
@@ -36,7 +38,7 @@
 
                 </div>
                 <div id="messageList" class="center-block">
-                    <span class="label label-primary">Available Events are:</span>
+                    <span class="label label-primary"><b>Available Events are:</b></span>
                     <br /><br />
                     <div class="row">
                         <div class="center-block col-md-6 brd">
@@ -49,16 +51,16 @@
                         </div>
                     </div>
 
-                </div>
+                </div><br />
                 <button class="btn btn-primary" type="submit">Save</button>
-                <p id="selectedBox">test</p>
+                <!--<p id="selectedBox">test</p>-->
             </div>
 
         </form>
-        
+
 
         <script>
-            
+
             $("button").click(function () {
                 var favorite = [];
                 $.each($("input[name='chbEvent']:checked"), function () {
@@ -86,7 +88,7 @@
 
             function createEndpoint(webhookValues) {
                 console.log("\n entered createendpoint in index");
-                $.post('http://127.0.0.1:8000/webhooks', webhookValues, async function (res) {
+                $.post('http://127.0.0.1:9000/webhooks', webhookValues, async function (res) {
                     var i = 0;
                     var webhookMessage = ''
                     console.log(res);
@@ -94,6 +96,7 @@
                     //    webhookMessage += await addWebhookMessage(data[i]);
                     //console.log(" Available Webhooks are: \n");
                     //printWebhookMessage(webhookMessage);
+                   // alert("webhook added successfully");
                 });
             }
 
@@ -134,8 +137,9 @@
 
                 $("#messageList").append(newRows);
             }
+            
             function getEvents() {
-                $.get('http://127.0.0.1:8000/events', async (data) => {
+                $.get('http://127.0.0.1:9000/events', async (data) => {
                     var newRows = await createCheckbox(data);
                 })
             }
@@ -144,7 +148,7 @@
                 var myDiv = document.getElementById("col1");
                 var myDiv1 = document.getElementById("col2");
                 //var newRows =''
-                
+
                 for (var i = 0; i < data.length; i++) {
                     var label = ''
                     var checkbox = document.createElement("input");
@@ -171,7 +175,7 @@
                         myDiv1.appendChild(label);
                         myDiv1.appendChild(br);
                     }
-                    
+
                 }
             }
         </script>
