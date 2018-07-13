@@ -6,9 +6,12 @@
   "dependencies": {
     "authorizenet": "^1.0.4",
     "body-parser": "^1.18.3",
+    "cors": "^2.8.4",
     "express": "^4.16.3",
+    "highcharts": "^6.1.1",
     "http": "0.0.0",
     "https": "^1.0.0",
+    "lokijs": "^1.5.5",
     "querystring": "^0.2.0",
     "react": "^16.4.0",
     "react-dom": "^16.4.0",
