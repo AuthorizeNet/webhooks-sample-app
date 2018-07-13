@@ -55,11 +55,14 @@ function databaseInitialize() {
         db.addCollection("notifications");
     }
 
+    if (!db.getCollection("testnotifications")) {
+        db.addCollection("testnotifications");
+    }
+
     if (!db.getCollection("eventsFrequency")) {
         db.addCollection("eventsFrequency");
     }
 }
-console.log("-------------------------------");
 
 function calculateLastXDays(x) {
     var recentDateMap = {};
@@ -71,20 +74,27 @@ function calculateLastXDays(x) {
     return recentDateMap;
 }
 
-function getRecentPayment(x) {
-    var recentDateMap = calculateLastXDays(x);
-    var notifications =  db.getCollection("notifications");
-    var paymentDocs = notifications.find({eventType: 
-        { $in: 
-            [
-                'net.authorize.payment.authcapture.created', 
-                'net.authorize.payment.priorAuthCapture.created',
-                'net.authorize.payment.capture.created'
-            ]
-        } 
-    });
-    // console.log("payment doc count: ", paymentDocs.length)
-    paymentDocs.forEach(element => {
+function getRecentGraph(eventCategory, noOfDays) {
+    var recentDateMap = calculateLastXDays(noOfDays);
+    var testnotifications =  db.getCollection("testnotifications");
+    var eventFilter;
+    if(eventCategory === 'payment'){
+        eventFilter =  [
+            'net.authorize.payment.authcapture.created', 
+            'net.authorize.payment.priorAuthCapture.created',
+            'net.authorize.payment.capture.created'
+        ];
+    }
+    else if(eventCategory === 'refund'){
+        eventFilter =  [
+            'net.authorize.payment.refund.created', 
+            'net.authorize.payment.void.created',
+        ];
+    }
+
+    var recentDocs = testnotifications.find({eventType: { $in: eventFilter } });
+    // console.log("payment doc count: ", recentDocs.length)
+    recentDocs.forEach(element => {
         var elementDate = new Date(element.eventDate).toISOString().slice(0, 10);
         if(elementDate in recentDateMap) {
             recentDateMap[elementDate] +=  parseInt(element.payload.authAmount);;
@@ -150,27 +160,23 @@ app.get("/webhooks/add", function (req, res) {
     res.send("hello");
 });
 
-
 app.post("/notifications", function (req, res) {
-    var notifications = db.getCollection("notifications");
-    if (notifications.count() == dbSize) {
+    var testnotifications = db.getCollection("testnotifications");
+    if (testnotifications.count() == dbSize) {
         // Get oldest entry available in the DB (event with oldest eventDate)
-        var oldestNotification = notifications.chain().simplesort("eventDate").limit(1).data();
-        notifications.remove(oldestNotification);
+        var oldestNotification = testnotifications.chain().simplesort("eventDate").limit(1).data();
+        testnotifications.remove(oldestNotification);
         // Decrement the oldest event's count in eventsFrequency collection
         decrementEventOccurrence(oldestNotification[0].eventType);
     }
-    notifications.insert(req.body);
+    testnotifications.insert(req.body);
     incrementEventOccurrence(req.body.eventType);
-
-    // console.log("after inserting \n", notifications.find());
     var eventsFrequency = db.getCollection("eventsFrequency");
     var eventsfrequencyWithoutMetadata = eventsFrequency.chain().data({removeMeta: true});
     io.emit("new event", {
         eventDetails: (req.body),
-        eventsCount: eventsfrequencyWithoutMetadata,
+        eventsCountList: eventsfrequencyWithoutMetadata,
     })
-    
     res.sendStatus(200);
 })
 
@@ -179,13 +185,11 @@ function decrementEventOccurrence(event) {
     var currentEvent = eventsFrequency.findOne({eventType: event });
     currentEvent.count = currentEvent.count - 1;
     eventsFrequency.update(currentEvent);
-    console.log("count reduced for the event ", event);
+    // console.log("count reduced for the event ", event);
 }
 
 function incrementEventOccurrence(event) {
-    console.log("occured event in incrementEventOccurrence: ", event);
     var eventsFrequency = db.getCollection("eventsFrequency");
-
     var currentEvent = eventsFrequency.findOne({eventType: event });
     if(currentEvent) {
         currentEvent.count = currentEvent.count + 1;
@@ -193,30 +197,72 @@ function incrementEventOccurrence(event) {
     }
     else
         eventsFrequency.insert({eventType: event, count: 1});
-    console.log("after inserting eventfrequency \n", eventsFrequency.find());
 }
 
-app.get("/notifications", async function (req, res) {
-    var recentDateMap = await getRecentPayment(noOfDaysGraph);
+console.log("************************************************");
+console.log("************************************************");
+
+/**
+ * API endpoint to return recent requested number of notifications
+ */
+app.get("/recentNotifications", async function(req, res) {
+    var testnotifications = db.getCollection("testnotifications");
+    var recentNotifications;
+    // If requesting count of notifications is less than number of notifications present in database,
+    // return the most recent requested number of notifications
+    if (testnotifications.count() > req.query.count)
+        recentNotifications = testnotifications.chain().simplesort("eventDate", true).limit(req.query.count).data({removeMeta: true});
+    
+    // If requesting count of notifications is more than number of notifications present in database,
+    // return all available notifications in database
+    else
+        recentNotifications = testnotifications.chain().data({removeMeta: true});
+    // Formatting in JSON style
+    var returnJsonValue = {
+        recentNotifications: recentNotifications,
+    };
+    returnApiResponse(res, recentNotifications);
+});
+
+/**
+ * Sends the API response.
+ * @param {*} res - Response Object.
+ * @param {*} returnJsonValue Value to be returned from the API
+ */
+function returnApiResponse(res, returnJsonValue) {
     res.format({
         html: function () {
-            console.log("\n inside html\n");
             res.json({
-                error: "Page not found"
+                error: "Page not found !!"
             });
         },
         json: function () {
-            res.json({
-                paymentDetail: recentDateMap,
-            });
+            res.json(returnJsonValue);
         }
     })
-})
+}
+
+app.get("/notifications", async function (req, res) {
+    console.log("------------------------------------");
+    // console.log("request graph parameter in /notif is: ", req.graph);
+    var returnValue;
+    if(req.query.name === 'all'){
+        var eventsFrequency = db.getCollection("eventsFrequency");
+        returnValue = eventsFrequency.chain().data({removeMeta: true});
+    }
+    else
+        returnValue = await getRecentGraph(req.query.name, noOfDaysGraph);
+    // Formatting in JSON style
+    var returnJsonValue = {
+        paymentDetail: returnValue,
+    };
+    returnApiResponse(res, returnJsonValue);
+});
 
 app.use((req, res, next) => {
     res.status(404).send("<h2 align=center>Page Not Found!</h2>");
 });
 
 var myServer = server.listen(config.app.port, "localhost", function () {
-    console.log("Example app listening on port ", server.address().port)
+    console.log("Application listening on port ", server.address().port)
 });
