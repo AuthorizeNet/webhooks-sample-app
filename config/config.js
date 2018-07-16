@@ -10,8 +10,12 @@ const dev = {
     db: {
         host: process.env.DEV_DB_HOST || 'localhost',
         port: parseInt(process.env.DEV_DB_PORT) || 27017,
-        name: process.env.DEV_DB_NAME || 'db'
+        name: process.env.DEV_DB_NAME || 'notification.db',
+        size: 5
     },
+    graph: {
+        noOfDays: 7
+    }
 };
 
 const test = {
@@ -24,7 +28,11 @@ const test = {
     db: {
         host: process.env.TEST_DB_HOST || 'localhost',
         port: parseInt(process.env.TEST_DB_PORT) || 27017,
-        name: process.env.TEST_DB_NAME || 'test'
+        name: process.env.DEV_DB_NAME || 'notification.db',
+        size: 5
+    },
+    graph: {
+        noOfDays: 7
     }
 };
 

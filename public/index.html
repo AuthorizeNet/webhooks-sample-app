@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+        <script src="../socket.io/socket.io.js"></script>
+        <script src="https://code.highcharts.com/highcharts.src.js"></script>
+        <script src="https://code.highcharts.com/modules/exporting.js"></script>
+        <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    </head>
+    <body>
+        <div class="jumbotron container-fluid" style="padding-bottom: 0;padding-top: 0">
+                <h2 style="text-align:center">Webhook Manager</h2>
+                <br />
+                <div class="btn-group btn-group-justified">
+                    <div class="btn-group">
+                        <button type="button" id="currentEvents" class="btn btn-primary">Event Monitoring</button>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" id="chart" class="btn btn-primary">Dashboard</button>    
+                    </div>
+                </div>    
+        </div>
+
+        <div class="row eventMonitoring" style="width: 90%; margin: 0 auto; text-align: left">
+                <div class="col-md-6" id="currentEventList" style="margin: 0 auto; text-align: left">
+                    <div style="text-align: left;" class="panel-group" id="panelCurrentEvent"></div>
+                </div>
+                <div class="col-md-6" style="display: inline;">
+                    <div id="chart5"></div>
+                    <div id="eventsCount" style="display: block;">
+                        <div class="btn-group-toggle" data-toggle="buttons" id="divEventsCount"></div>
+                    </div>
+                </div>
+        </div>
+
+        <div id="includedContent" style="display: none;"></div>
+        
+        <script src="./javascripts/index.js"></script>
+    </body>
+</html>

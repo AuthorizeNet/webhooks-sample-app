@@ -2,13 +2,13 @@ const express = require("express");
 const app = express();
 const request = require("request");
 const bodyParser = require("body-parser");
-
+const path = require("path");
 const http = require("http");
 const socketIo = require("socket.io");
 const server = http.Server(app);
 const cors = require("cors");
 const io = socketIo(server);
-const config = require("./config");
+const config = require("./config/config");
 const loki = require("lokijs");
 
 const encodedString = Buffer.from(config.apiLoginId + ":" +
@@ -20,34 +20,34 @@ const headers = { "content-type": "application/json",
 const eventRequestData = {
     url: config.apiEndpoint + "/eventtypes",
     method: "GET",
-    headers: headers,
+    headers: headers
 };
 
 const webhooksRequestData = {
     url: config.apiEndpoint + "/webhooks",
     method: "GET",
-    headers: headers,
+    headers: headers
 };
 
 const webhooksPostData = {
     url: config.apiEndpoint + "/webhooks",
     method: "POST",
     headers: headers,
-    json: true,
+    json: true
 };
 
 app.use(cors());
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-var noOfDaysGraph = 7;
-var dbSize = 5;
-var db = new loki("notification.db", {
-	autoload: true,
-	autoloadCallback : databaseInitialize,
-	autosave: true, 
-	autosaveInterval: 4000
+var noOfDaysGraph = config.graph.noOfDays;
+var dbSize = config.db.size;
+var db = new loki(config.db.name, {
+         autoload: true,
+         autoloadCallback : databaseInitialize,
+         autosave: true,
+         autosaveInterval: 4000
 });
 
 function databaseInitialize() {
@@ -66,8 +66,10 @@ function databaseInitialize() {
 
 function calculateLastXDays(x) {
     var recentDateMap = {};
+    var tempDate;
     while (x > 0) {
-        var tempDate = new Date(new Date().setDate(new Date().getDate()- x + 1)).toISOString().slice(0, 10);
+        tempDate = new Date(new Date().setDate(new Date().getDate()- x + 1))
+                   .toISOString().slice(0, 10);
         recentDateMap[tempDate] = 0;
         --x;
     }
@@ -78,26 +80,27 @@ function getRecentGraph(eventCategory, noOfDays) {
     var recentDateMap = calculateLastXDays(noOfDays);
     var testnotifications =  db.getCollection("testnotifications");
     var eventFilter;
-    if(eventCategory === 'payment'){
+    if(eventCategory === "payment"){
         eventFilter =  [
-            'net.authorize.payment.authcapture.created', 
-            'net.authorize.payment.priorAuthCapture.created',
-            'net.authorize.payment.capture.created'
+            "net.authorize.payment.authcapture.created",
+            "net.authorize.payment.priorAuthCapture.created",
+            "net.authorize.payment.capture.created"
         ];
     }
-    else if(eventCategory === 'refund'){
+    else if(eventCategory === "refund"){
         eventFilter =  [
-            'net.authorize.payment.refund.created', 
-            'net.authorize.payment.void.created',
+            "net.authorize.payment.refund.created",
+            "net.authorize.payment.void.created"
         ];
     }
 
     var recentDocs = testnotifications.find({eventType: { $in: eventFilter } });
     // console.log("payment doc count: ", recentDocs.length)
-    recentDocs.forEach(element => {
-        var elementDate = new Date(element.eventDate).toISOString().slice(0, 10);
+    recentDocs.forEach( (element) => {
+        var elementDate = new Date(element.eventDate)
+                          .toISOString().slice(0, 10);
         if(elementDate in recentDateMap) {
-            recentDateMap[elementDate] +=  parseInt(element.payload.authAmount);;
+            recentDateMap[elementDate] +=  parseInt(element.payload.authAmount);
         }
     });
     // console.log("recentdate map is\n ", recentDateMap);
@@ -151,7 +154,7 @@ app.post("/webhooks", function (req, res) {
         else {
             console.log(response.body);
             //res.sendStatus(200);
-        }        
+        }
     });
 
 });
@@ -164,7 +167,8 @@ app.post("/notifications", function (req, res) {
     var testnotifications = db.getCollection("testnotifications");
     if (testnotifications.count() == dbSize) {
         // Get oldest entry available in the DB (event with oldest eventDate)
-        var oldestNotification = testnotifications.chain().simplesort("eventDate").limit(1).data();
+        var oldestNotification = testnotifications.chain()
+                                 .simplesort("eventDate").limit(1).data();
         testnotifications.remove(oldestNotification);
         // Decrement the oldest event's count in eventsFrequency collection
         decrementEventOccurrence(oldestNotification[0].eventType);
@@ -172,13 +176,14 @@ app.post("/notifications", function (req, res) {
     testnotifications.insert(req.body);
     incrementEventOccurrence(req.body.eventType);
     var eventsFrequency = db.getCollection("eventsFrequency");
-    var eventsfrequencyWithoutMetadata = eventsFrequency.chain().data({removeMeta: true});
+    var eventsfrequencyWithoutMetadata = eventsFrequency
+                                         .chain().data({removeMeta: true});
     io.emit("new event", {
         eventDetails: (req.body),
-        eventsCountList: eventsfrequencyWithoutMetadata,
-    })
+        eventsCountList: eventsfrequencyWithoutMetadata
+    });
     res.sendStatus(200);
-})
+});
 
 function decrementEventOccurrence(event) {
     var eventsFrequency = db.getCollection("eventsFrequency");
@@ -195,28 +200,33 @@ function incrementEventOccurrence(event) {
         currentEvent.count = currentEvent.count + 1;
         eventsFrequency.update(currentEvent);
     }
-    else
+    else {
         eventsFrequency.insert({eventType: event, count: 1});
+    }
 }
 
-console.log("************************************************");
-console.log("************************************************");
+
 
 /**
  * API endpoint to return recent requested number of notifications
  */
 app.get("/recentNotifications", async function(req, res) {
     var testnotifications = db.getCollection("testnotifications");
-    var recentNotifications;
-    // If requesting count of notifications is less than number of notifications present in database,
-    // return the most recent requested number of notifications
+    var recentNotifications = testnotifications.chain()
+                              .simplesort("eventDate");
+    // If requesting count of notifications is less than number of notifications
+    // present in database, return the most recent requested number of
+    // notifications
     if (testnotifications.count() > req.query.count)
-        recentNotifications = testnotifications.chain().simplesort("eventDate", true).limit(req.query.count).data({removeMeta: true});
-    
-    // If requesting count of notifications is more than number of notifications present in database,
-    // return all available notifications in database
+        recentNotifications = recentNotifications
+                              .limit(req.query.count)
+                              .data({removeMeta: true});
+
+    // If requesting count of notifications is more than number of notifications
+    // present in database, return all available notifications in database
     else
-        recentNotifications = testnotifications.chain().data({removeMeta: true});
+        recentNotifications = recentNotifications
+                              .data({removeMeta: true});
     // Formatting in JSON style
     var returnJsonValue = {
         recentNotifications: recentNotifications,
@@ -246,7 +256,7 @@ app.get("/notifications", async function (req, res) {
     console.log("------------------------------------");
     // console.log("request graph parameter in /notif is: ", req.graph);
     var returnValue;
-    if(req.query.name === 'all'){
+    if(req.query.name === "all"){
         var eventsFrequency = db.getCollection("eventsFrequency");
         returnValue = eventsFrequency.chain().data({removeMeta: true});
     }
