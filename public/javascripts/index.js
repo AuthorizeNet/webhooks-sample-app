@@ -162,6 +162,7 @@ async function displayEventMessage(eventName, eventDetails) {
     var newPanelColEventtype = document.createElement("div");
     newPanelColEventtype.classList.add("col-md-5");
     var ColEventtypeTextnode = document.createTextNode("" + eventDetails.eventType);
+    newPanelColEventtype.style.wordBreak = "break-all";
     newPanelColEventtype.appendChild(ColEventtypeTextnode);
 
     var newPanelColPayload = document.createElement("div");
