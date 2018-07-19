@@ -62,6 +62,8 @@ function databaseInitialize() {
     if (!db.getCollection("eventsFrequency")) {
         db.addCollection("eventsFrequency");
     }
+    // console.log("available testnotif are :\n", db.getCollection("testnotifications").find())
+    calculateEventGraphInterval(graphStartTime, 3600);
 }
 
 function calculateLastXDays(x) {
@@ -190,7 +192,6 @@ function decrementEventOccurrence(event) {
     var currentEvent = eventsFrequency.findOne({eventType: event });
     currentEvent.count = currentEvent.count - 1;
     eventsFrequency.update(currentEvent);
-    // console.log("count reduced for the event ", event);
 }
 
 function incrementEventOccurrence(event) {
@@ -204,8 +205,82 @@ function incrementEventOccurrence(event) {
         eventsFrequency.insert({eventType: event, count: 1});
     }
 }
+var graphStartTime = new Date(new Date().setDate(new Date().getDate()- 1));
+
+function calculateEventGraphInterval(startTime, intervalTimeSeconds) {
+    console.log("start time: ", startTime);
+    
+    var newTime = new Date(startTime.getTime() + (1000*intervalTimeSeconds));
+    // console.log("after 5 mins;", newTime);
+    var graphTimeMap = {}, tempDate;
+    var graphTimeList = [];
+    
+    var currentTime = new Date();
+    tempDate = startTime.toISOString().slice(0, 24);
+    graphTimeMap[tempDate] = {};
+    graphTimeList.push(startTime);
+    while(newTime  < currentTime) {
+        tempDate = newTime.toISOString().slice(0, 24);
+        graphTimeMap[tempDate] = {};
+        graphTimeList.push(newTime);
+        newTime = new Date(newTime.getTime() + (1000*intervalTimeSeconds));
+        
+    }
+    console.log("time list:\n", graphTimeList);
+    // findEventsFrequencyInGraphInterval(graphTimeMap);
+    findEventsFrequencyInGraphInterval(graphTimeList, intervalTimeSeconds);
+}
 
 
+function findEventsFrequencyInGraphInterval(graphTimeList, intervalTimeSeconds) {
+    var testnotifications =  db.getCollection("testnotifications");
+    // var graphEvents = testnotifications.find({eventDate: { $gt: graphTimeList[0] } });
+    var graphEvents = testnotifications.chain().where(function(obj) {
+                      return  graphTimeList[0] < new Date(obj.eventDate)}).data();
+    var graphEventsTimeMap = {};
+    if(graphEvents) {
+        graphEvents.forEach(function(event) {
+            timeDiff = Math.abs(new Date(event.eventDate).getTime() - new Date(graphTimeList[0]).getTime());
+            var index = Math.ceil((timeDiff/ (intervalTimeSeconds * 1000)));
+            console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index, "to insert at ", graphTimeList[index].toISOString());
+
+            var graphTimeString = graphTimeList[index].toISOString();
+            // array empty or does not exist
+            if (graphEventsTimeMap[graphTimeString] === undefined || graphEventsTimeMap[graphTimeString].length == 0) {
+                graphEventsTimeMap[graphTimeString] = [];
+                graphEventsTimeMap[graphTimeString].push({name: event.eventType, count: 1});
+                console.log("inserted as first element in list");
+            }
+            else {
+                var eventInserted = false;
+                graphEventsTimeMap[graphTimeString].forEach(function(element, i, theArray) {
+                    
+                    if(element.hasOwnProperty("name")){
+                        if(element.name === event.eventType) {
+                            theArray[i].count = theArray[i].count + 1;
+                            eventInserted = true;
+                            console.log("count increased for the element");
+                        }
+                    }
+                });
+                if(!eventInserted) {
+                    graphEventsTimeMap[graphTimeString].push({"name": event.eventType, "count": 1});
+                    console.log("inserted as a new element of an existing list");
+                }
+            }
+        });
+        console.log("graphEventsTimeMap looks like: ", JSON.stringify(graphEventsTimeMap));
+    }
+    else
+        console.log("no events occured in requested interval");
+}
+
+app.get("/eventsGraphData", async function(req, res) {
+    console.log("yesterday time :", new Date(new Date().setDate(new Date().getDate()- 1)));
+    //await calculateEventGraphInterval(new Date(new Date().getDate()- 1), 300);
+
+
+});
 
 /**
  * API endpoint to return recent requested number of notifications
