@@ -26,7 +26,21 @@
                 </div>    
         </div>
 
-        <div class="row eventMonitoring" style="width: 90%; margin: 0 auto; text-align: left">
+        <div class="row eventMonitoring" style="width: 100%; margin: 0 auto; text-align: left;">
+            <div class="col-md-6">
+                    <table class="table eventMonitoringHeading">
+                        <thead>
+                            <tr class="success">
+                                <th class="col-md-2">Timestamp</th>
+                                <th class="col-md-6" style="margin: 0 auto; text-align: center">Event Type</th>
+                                <th class="col-md-4" style="margin: 0 auto; text-align: center">Payload</th>
+                            </tr>
+                        </thead>
+                    </table>
+            </div>
+            <div class="col-md-6"></div>
+        </div>
+        <div class="row eventMonitoring" style="width: 100%; margin: 0 auto; text-align: center">
                 <div class="col-md-6" id="currentEventList" style="margin: 0 auto; text-align: left">
                     <div style="text-align: left;" class="panel-group" id="panelCurrentEvent"></div>
                 </div>
