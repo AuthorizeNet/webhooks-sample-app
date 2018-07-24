@@ -91,10 +91,6 @@ $.getJSON("/eventsGraphData", function (results) {
 		console.log("\n in set interval\n");
 		updateLiveEventGraph(results.intervalTimeSeconds, eventFrequencyInGraphInterval);
 		eventFrequencyInGraphInterval = {};
-
-		// updateXAxis();
-		// addDataset();
-		// addData();
 	}, 7000);
 });
 
