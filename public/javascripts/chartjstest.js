@@ -1,6 +1,32 @@
+var chartColors = {
+	Red: 'rgb(230, 25, 75)',
+	Green: 'rgb(60, 180, 75)',
+	Yellow: 'rgb(255, 225, 25)',
+	Blue: 'rgb(0, 130, 200)',
+	Orange: 'rgb(245, 130, 48)',
+	Purple: 'rgb(145, 30, 180)',
+	Cyan: 'rgb(70, 240, 240)',
+	Magenta: 'rgb(240, 50, 230)',
+	Lime: 'rgb(210, 245, 60)',
+	Pink: 'rgb(250, 190, 190)',
+	Teal: 'rgb(0, 128, 128)',
+	Lavender: 'rgb(230, 190, 255)',
+	Brown: 'rgb(170, 110, 40)',
+	Beige: 'rgb(255, 250, 200)',
+	Maroon: 'rgb(128, 0, 0)',
+	Mint: 'rgb(170, 255, 195)',
+	Olive: 'rgb(128, 128, 0)',
+	Coral: 'rgb(255, 215, 180)',
+	Navy: 'rgb(0, 0, 128)',
+	Grey: 'rgb(128, 128, 128)',
+	White: 'rgb(255, 255, 255)',
+	Black: 'rgb(0, 0, 0)',
+};
+
 var config, 
 	eventFrequencyInGraphInterval = {},
-	myLine;
+	myLine,
+	colorNames = Object.keys(chartColors);;
 
 			
 $.getJSON("/eventsGraphData", function (results) {
@@ -21,12 +47,16 @@ $.getJSON("/eventsGraphData", function (results) {
 							var datasetList = [];
 							nameList = Object.keys(results.eventFrequencyAtEachTimeMap);
 							dataList = Object.values(results.eventFrequencyAtEachTimeMap);
-								for(var i=0; i<nameList.length; ++i) {
-									datasetList.push({
-										label: nameList[i], 
-										data: dataList[i]
-									});
-								}
+							for(var i=0; i<nameList.length; ++i) {
+								var colorName = colorNames[i % colorNames.length];
+								var newColor = chartColors[colorName];
+								datasetList.push({
+									label: nameList[i], 
+									data: dataList[i],
+									borderColor: newColor,
+									backgroundColor: newColor,
+								});
+							}
 							return datasetList;
 						} ())
 			},
@@ -67,18 +97,6 @@ $.getJSON("/eventsGraphData", function (results) {
 		// addData();
 	}, 7000);
 });
-	
-// $(document).ready(function() {
-// 	var ctx = document.getElementById("chartBox").getContext("2d");
-// 	myLine = new Chart(ctx, config);
-// });
-
-// window.onload = function() {
-// 	var ctx = document.getElementById('canvas').getContext('2d');
-// 	window.myLine = new Chart(ctx, config);
-// };
-
-
 
 function updateLiveEventGraph(intervalTimeSeconds, eventFrequencyInGraphInterval) {
     console.log("\n eventFrequencyInGraphInterval is \n", eventFrequencyInGraphInterval);
@@ -118,9 +136,13 @@ function updateLiveEventGraph(intervalTimeSeconds, eventFrequencyInGraphInterval
 
 function addDataset(newEvent) {
 	console.log("new series adding for event ", newEvent);
+	var colorName = colorNames[config.data.datasets.length % colorNames.length];
+	var newColor = chartColors[colorName];
 	var newDataset = {
 		label: newEvent,
 		data: [],
+		borderColor: newColor,
+		backgroundColor: newColor,
 	};
 
 	for (var index = 0; index < config.data.labels.length; ++index)
