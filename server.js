@@ -6,37 +6,10 @@ const path = require("path");
 const http = require("http");
 const socketIo = require("socket.io");
 const server = http.Server(app);
-const cors = require("cors");
 const io = socketIo(server);
 const config = require("./config/config");
 const loki = require("lokijs");
 
-const encodedString = Buffer.from(config.apiLoginId + ":" +
-                                config.transactionKey).toString("base64");
-
-const headers = { "content-type": "application/json",
-                "Authorization": "Basic " + encodedString };
-
-const eventRequestData = {
-    url: config.apiEndpoint + "/eventtypes",
-    method: "GET",
-    headers: headers
-};
-
-const webhooksRequestData = {
-    url: config.apiEndpoint + "/webhooks",
-    method: "GET",
-    headers: headers
-};
-
-const webhooksPostData = {
-    url: config.apiEndpoint + "/webhooks",
-    method: "POST",
-    headers: headers,
-    json: true
-};
-
-app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -63,8 +36,7 @@ function databaseInitialize() {
         db.addCollection("eventsFrequency");
     }
     // console.log("available testnotif are :\n", db.getCollection("testnotifications").find())
-    
-    // calculateEventGraphInterval(graphStartTime, 300);
+    // db.getCollection("testnotifications").chain().remove();
 }
 
 function calculateLastXDays(x) {
@@ -99,6 +71,7 @@ function getRecentGraph(eventCategory, noOfDays) {
 
     var recentDocs = testnotifications.find({eventType: { $in: eventFilter } });
     // console.log("payment doc count: ", recentDocs.length)
+    // TODO: null check recentDocs
     recentDocs.forEach( (element) => {
         var elementDate = new Date(element.eventDate)
                           .toISOString().slice(0, 10);
@@ -106,65 +79,11 @@ function getRecentGraph(eventCategory, noOfDays) {
             recentDateMap[elementDate] +=  parseInt(element.payload.authAmount);
         }
     });
+    // TODO: ends here
     // console.log("recentdate map is\n ", recentDateMap);
     return recentDateMap;
 
 }
-
-function parseBody(res, body) {
-    try {
-        res.send(JSON.parse(body));
-    }catch (e) {
-        var errorMessage = {};
-        if (e instanceof TypeError) {
-            errorMessage.message = "Error in Connection. Please try again";
-            res.send(errorMessage);
-        }
-        else {
-            errorMessage.message = "Some Error occured";
-            res.send(errorMessage);
-        }
-    }
-}
-
-function getEvents(res) {
-    request(eventRequestData, function (error, response, body) {
-        parseBody(res, body);
-    });
-}
-function getWebhooks(res) {
-    request(webhooksRequestData, function (error, response, body) {
-        parseBody(res, body);
-    });
-
-}
-app.get("/events", function (req, res) {
-    getEvents(res);
- });
-
- app.get("/webhooks", function (req, res) {
-    getWebhooks(res);
-});
-
-app.post("/webhooks", function (req, res) {
-    console.log("this is req.body in server.js\n");
-    webhooksPostData.body = req.body;
-    request(webhooksPostData, function (error, response, body) {
-        if (error) {
-            console.log("error occured: \n", error);
-            //res.write("Error");
-        }
-        else {
-            console.log(response.body);
-            //res.sendStatus(200);
-        }
-    });
-
-});
-
-app.get("/webhooks/add", function (req, res) {
-    res.send("hello");
-});
 
 app.post("/notifications", function (req, res) {
     var testnotifications = db.getCollection("testnotifications");
@@ -230,12 +149,13 @@ function getCollectionFunction(collectionName) {
 }
 
 function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
-    
     var eventFrequencyAtEachTimeMap = {}; // {"event1": [4,0,3,1,0,6,2,3,0,0], "event2": [0,0,5,3,2,0,5,7,8,9]}
     if(graphEvents) {
         graphEvents.forEach(function(event) {
             timeDiff = Math.abs(new Date(event.eventDate).getTime() - new Date(graphTimeList[0]).getTime());
             var index = Math.ceil((timeDiff/ (config.graph.intervalTimeSeconds * 1000)));
+            console.log(" graphtimelist length =", graphTimeList.length);
+            console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index);
             console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index, "to insert at ", graphTimeList[index].toISOString());
             if (eventFrequencyAtEachTimeMap[event.eventType] === undefined || eventFrequencyAtEachTimeMap[event.eventType].length == 0) {
                 eventFrequencyAtEachTimeMap[event.eventType] = Array(config.graph.graphTimeScale).fill(0);
@@ -261,6 +181,7 @@ app.get("/eventsGraphData", async function(req, res) {
         .then((testnotifications) => {
             var graphEvents = testnotifications.chain().where(function(obj) {
                 return  graphStartTime < new Date(obj.eventDate)}).data();
+                // console.log("graph events",graphEvents )
             return graphEvents;
         })
         .then((graphEvents) =>{
@@ -272,7 +193,7 @@ app.get("/eventsGraphData", async function(req, res) {
             }
             returnApiResponse(res, returnJsonValue);
         })
-        .catch((err) => { console.log("error happened in getting graphEvents") })
+        .catch((err) => { console.log("error happened in getting graphEvents", err) })
     
 });
 
@@ -342,6 +263,6 @@ app.use((req, res, next) => {
     res.status(404).send("<h2 align=center>Page Not Found!</h2>");
 });
 
-var myServer = server.listen(config.app.port, "localhost", function () {
+server.listen(config.app.port, "localhost", function () {
     console.log("Application listening on port ", server.address().port)
 });
