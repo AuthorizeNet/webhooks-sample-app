@@ -1,3 +1,4 @@
+"use strict";
 plotAllGraphs();
 async function plotAllGraphs() {
     await plotGraph("payment", "chart1");
@@ -6,7 +7,7 @@ async function plotAllGraphs() {
 
 function plotGraph(eventCategory, chartId) {
     var graph = {
-        name: eventCategory,
+        name: eventCategory
     };
     $.getJSON('/notifications', graph, function (results) {
         var totalPayment = Object.values(results.paymentDetail).reduce((a,b) => a + b, 0);
@@ -32,7 +33,7 @@ function plotGraph(eventCategory, chartId) {
             },
         xAxis: {
             categories: Object.keys(results.paymentDetail),
-            
+
         },
         yAxis: {
             title: {
@@ -41,7 +42,7 @@ function plotGraph(eventCategory, chartId) {
         },
         tooltip: {
             shared: true,
-            formatter: function() { 
+            formatter: function() {
                 return 'Date: <b>' + this.x + '</b><br>Amount: <b>'+ this.y + ' $</b>';
                 }
         },

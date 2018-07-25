@@ -1,3 +1,4 @@
+"use strict";
 // Initialize socket variable
 var socket = io();
 /**
@@ -12,7 +13,7 @@ $(() => {
         $("#includedContent").css("display", "block");
     });
 
-    $("#currentEvents").click(async () => {
+    $("#currentEvents").click(() => {
         $("#includedContent").css("display", "none");
         $(".eventMonitoring").css("display", "block");
     });
@@ -39,7 +40,7 @@ socket.on("new event", (body) => {
 /**
  * Formats the event date into only date time format
  * Converting "2018-07-21T20:52:59.2144524Z" to "2018-07-21 20:52:59"
- * @param {string} eDate 
+ * @param {string} eDate
  */
 function formatEventDate(eDate) {
     var eventDate = eDate.split("T");
@@ -51,7 +52,7 @@ function formatEventDate(eDate) {
 /**
  * Called when new notification is received. Calls methods to display the event
  * log message and update event frequency in event log graph
- * @param {*} body 
+ * @param {*} body
  */
 function onNewEvent(body) {
     // var eventName = extracteventNameFromEventType(body.eventDetails.eventType);
@@ -62,20 +63,20 @@ function onNewEvent(body) {
 /**
  * Creates a new event message with event timestamp, event type and payload.
  * Appends this message to an UI element adds animation to it
- * @param {*} eventDetails 
+ * @param {*} eventDetails
  */
 async function displayEventMessage(eventDetails) {
     var eventDate = formatEventDate(eventDetails.eventDate);
     var mainPanel = document.getElementById("panelCurrentEvent");
-    if(mainPanel.childElementCount == 5)
+    if(mainPanel.childElementCount == 5) {
         mainPanel.removeChild(mainPanel.lastChild);
-
+    }
     var newPanel = document.createElement("div");
     newPanel.classList.add("panel", "panel-success");
 
     var newPanelRow = document.createElement("div");
     newPanelRow.classList.add("row");
-    newPanelRow.setAttribute("style", "background-color: khaki;")
+    newPanelRow.setAttribute("style", "background-color: khaki;");
 
     var newPanelColTimestamp = document.createElement("div");
     newPanelColTimestamp.classList.add("col-md-2");
@@ -109,7 +110,7 @@ async function displayEventMessage(eventDetails) {
         // keyframes
         { transform: "translateX(300px)" },
         { transform: "translateY(0px)" }
-    ], { 
+    ], {
         // timing options
         duration: 500,
     });

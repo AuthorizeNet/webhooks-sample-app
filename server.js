@@ -1,6 +1,6 @@
+"use strict";
 const express = require("express");
 const app = express();
-const request = require("request");
 const bodyParser = require("body-parser");
 const path = require("path");
 const http = require("http");
@@ -17,10 +17,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 var noOfDaysGraph = config.graph.noOfDays;
 var dbSize = config.db.size;
 var db = new loki(config.db.name, {
-         autoload: true,
-         autoloadCallback : databaseInitialize,
-         autosave: true,
-         autosaveInterval: 4000
+  autoload: true,
+  autoloadCallback: databaseInitialize,
+  autosave: true,
+  autosaveInterval: 4000
 });
 
 function databaseInitialize() {
@@ -53,7 +53,7 @@ function calculateLastXDays(x) {
 
 function getRecentGraph(eventCategory, noOfDays) {
     var recentDateMap = calculateLastXDays(noOfDays);
-    var testnotifications =  db.getCollection("testnotifications");
+    var testnotifications = db.getCollection("testnotifications");
     var eventFilter;
     if(eventCategory === "payment"){
         eventFilter =  [
@@ -82,7 +82,6 @@ function getRecentGraph(eventCategory, noOfDays) {
     // TODO: ends here
     // console.log("recentdate map is\n ", recentDateMap);
     return recentDateMap;
-
 }
 
 app.post("/notifications", function (req, res) {
@@ -130,7 +129,6 @@ function calculateEventGraphInterval(startTime) {
     console.log("start time: ", startTime);
     var newTime = new Date(startTime.getTime() + (1000 * config.graph.intervalTimeSeconds));
     var graphTimeList = [], currentTime = new Date(), tempDate;
-    
     console.log("currentTime", currentTime);
     tempDate = startTime.toISOString().slice(0, 24);
     graphTimeList.push(startTime);
@@ -152,21 +150,23 @@ function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
     var eventFrequencyAtEachTimeMap = {}; // {"event1": [4,0,3,1,0,6,2,3,0,0], "event2": [0,0,5,3,2,0,5,7,8,9]}
     if(graphEvents) {
         graphEvents.forEach(function(event) {
-            timeDiff = Math.abs(new Date(event.eventDate).getTime() - new Date(graphTimeList[0]).getTime());
-            var index = Math.ceil((timeDiff/ (config.graph.intervalTimeSeconds * 1000)));
+            var timeDiff = Math.abs(new Date(event.eventDate).getTime() - new Date(graphTimeList[0]).getTime());
+            var index = Math.ceil(timeDiff/ (config.graph.intervalTimeSeconds * 1000));
             console.log(" graphtimelist length =", graphTimeList.length);
             console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index);
             console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index, "to insert at ", graphTimeList[index].toISOString());
             if (eventFrequencyAtEachTimeMap[event.eventType] === undefined || eventFrequencyAtEachTimeMap[event.eventType].length == 0) {
-                eventFrequencyAtEachTimeMap[event.eventType] = Array(config.graph.graphTimeScale).fill(0);
+                eventFrequencyAtEachTimeMap[event.eventType] = new Array(config.graph.graphTimeScale).fill(0);
                 eventFrequencyAtEachTimeMap[event.eventType][index-1] = 1;
             }
-            else 
+            else {
                 eventFrequencyAtEachTimeMap[event.eventType][index-1] += 1;
+            }
         });
     }
-    else
+    else {
         console.log("no events occured in requested interval");
+    }
     return eventFrequencyAtEachTimeMap;
 }
 
@@ -176,7 +176,7 @@ app.get("/eventsGraphData", async function(req, res) {
     var graphStartTime = new Date(calculateFromTime.getTime() + (1000 * config.graph.intervalTimeSeconds));
 
     var graphTimeList = calculateEventGraphInterval(calculateFromTime);
-    
+
     getCollectionFunction("testnotifications")
         .then((testnotifications) => {
             var graphEvents = testnotifications.chain().where(function(obj) {
@@ -190,11 +190,10 @@ app.get("/eventsGraphData", async function(req, res) {
                 eventFrequencyAtEachTimeMap: eventFrequencyAtEachTimeMap,
                 graphStartTime: graphTimeList[1],
                 intervalTimeSeconds: config.graph.intervalTimeSeconds
-            }
+            };
             returnApiResponse(res, returnJsonValue);
         })
-        .catch((err) => { console.log("error happened in getting graphEvents", err) })
-    
+        .catch((err) => { console.log("error happened in getting graphEvents", err) });
 });
 
 /**
@@ -239,7 +238,7 @@ function returnApiResponse(res, returnJsonValue) {
         json: function () {
             res.json(returnJsonValue);
         }
-    })
+    });
 }
 
 app.get("/notifications", async function (req, res) {
@@ -263,6 +262,6 @@ app.use((req, res, next) => {
     res.status(404).send("<h2 align=center>Page Not Found!</h2>");
 });
 
-server.listen(config.app.port, "localhost", function () {
-    console.log("Application listening on port ", server.address().port)
+server.listen(config.app.port, config.app.host, function () {
+    console.log("Application listening on port ", server.address().port);
 });
