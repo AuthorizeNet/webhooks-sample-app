@@ -1,44 +1,40 @@
 const env = process.env.NODE_ENV || 'dev'; // 'dev' or 'test'
 
 const dev = {
-    apiEndpoint: 'https://apitest.authorize.net/rest/v1',
-    apiLoginId: process.env.apiLogin || 'enter your api login id here',
-    transactionKey: process.env.transactionKey || 'enter your transaction key here' ,
     app: {
-        port: parseInt(process.env.DEV_APP_PORT) || 9000
+        port: parseInt(process.env.DEV_APP_PORT) || 9000,
+        host: process.env.APP_DB_HOST || 'localhost'
     },
     db: {
-        host: process.env.DEV_DB_HOST || 'localhost',
-        port: parseInt(process.env.DEV_DB_PORT) || 27017,
         name: process.env.DEV_DB_NAME || 'notification.db',
-        size: 5
+        size: 200
     },
     graph: {
-        noOfDays: 7
+        noOfDays: 7,
+        intervalTimeSeconds: 43200,
+        graphTimeScale: 12 // Number of time intervals to show in graph
     }
 };
 
 const test = {
-    apiEndpoint: 'https://apitest.authorize.net/rest/v1',
-    apiLoginId: 'enter your api login id here',
-    transactionKey: 'enter your transaction key here',
     app: {
-        port: parseInt(process.env.TEST_APP_PORT) || 3000
+        port: parseInt(process.env.TEST_APP_PORT) || 1337,
+        host: process.env.APP_DB_HOST || 'localhost'
     },
     db: {
-        host: process.env.TEST_DB_HOST || 'localhost',
-        port: parseInt(process.env.TEST_DB_PORT) || 27017,
         name: process.env.DEV_DB_NAME || 'notification.db',
         size: 5
     },
     graph: {
-        noOfDays: 7
+        noOfDays: 7,
+        intervalTimeSeconds: 3600,
+        graphTimeScale: 4 // Number of time intervals to show in graph
     }
 };
 
 const config = {
- dev,
- test
+    dev,
+    test
 };
 
 module.exports = config[env];
