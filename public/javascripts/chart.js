@@ -20,7 +20,6 @@ var chartColors = {
     Coral: 'rgb(255, 215, 180)',
     Navy: 'rgb(0, 0, 128)',
     Grey: 'rgb(128, 128, 128)',
-    White: 'rgb(255, 255, 255)',
     Black: 'rgb(0, 0, 0)',
 };
 
@@ -45,8 +44,8 @@ $.getJSON("/eventsGraphData", function (results) {
                         }()),
                 datasets: (function() {
                             var datasetList = [];
-                            nameList = Object.keys(results.eventFrequencyAtEachTimeMap);
-                            dataList = Object.values(results.eventFrequencyAtEachTimeMap);
+                            var nameList = Object.keys(results.eventFrequencyAtEachTimeMap);
+                            var dataList = Object.values(results.eventFrequencyAtEachTimeMap);
                             for(var i=0; i<nameList.length; ++i) {
                                 var colorName = colorNames[i % colorNames.length];
                                 var newColor = chartColors[colorName];
@@ -61,14 +60,29 @@ $.getJSON("/eventsGraphData", function (results) {
                         } ())
             },
             options: {
+                title: {
+                    display: true,
+                    text: 'Event Tracker',
+                    fontSize: 20
+                },
+                legend:{
+                    position: "bottom",
+                },
                 scales: {
                 xAxes: [{
                     ticks: {
                         callback: function(value) {
-                                    formattedTime = new Date(value).toISOString().split("T");
+                                    var formattedTime = new Date(value).toISOString().split("T");
                                     formattedTime[1]= formattedTime[1].split(".")[0];
                                     return formattedTime[1];
                                 }
+                    }
+                }],
+                yAxes : [{
+                    ticks : {
+                        min : 0,
+                        suggestedMax: 15,
+                        stepSize: 5,
                     }
                 }]
                 },
@@ -80,6 +94,29 @@ $.getJSON("/eventsGraphData", function (results) {
                 },
                 responsiveAnimationDuration: 0
             },
+            plugins: [
+            {
+                beforeUpdate: function(config) {
+                    config.data.datasets.forEach((dataset) => {
+                        var eventCount = dataset.data.reduce((a,b) => a + b, 0);
+                        dataset.label = dataset.label +  " ("+ eventCount + ")";
+                        if(!eventCount) {
+                            dataset.hidden = true;
+                        }
+                    });
+                }
+            },
+            {
+                afterUpdate: function(config) {
+                    config.data.datasets.forEach((dataset) => {
+                        dataset.label = dataset.label.split(" ")[0];
+                        if(dataset.hidden) {
+                            dataset.hidden = false;
+                        }
+                    });
+                }
+            }
+        ]
         };
     }
 
@@ -87,11 +124,11 @@ $.getJSON("/eventsGraphData", function (results) {
         var ctx = document.getElementById("chartBox").getContext("2d");
         myLine = new Chart(ctx, config);
     });
-    stopGraphUpdate = setInterval(function () {
+    var stopGraphUpdate = setInterval(function () {
         console.log("\n in set interval\n");
         updateLiveEventGraph(results.intervalTimeSeconds, eventFrequencyInGraphInterval);
         eventFrequencyInGraphInterval = {};
-    }, 7000);
+    }, 4000);
 });
 
 function updateLiveEventGraph(intervalTimeSeconds, eventFrequencyInGraphInterval) {
