@@ -9,11 +9,16 @@ $(() => {
     $("#includedContent").load("../mainChart.html");
 
     $("#chart").click(() => {
+        $("#chart").css("background-color", "palevioletred");
+        $("#currentEvents").css("background-color", "");
+        $("#currentEvents").hasClass('btn-color') ? removeClass('btn-color') : '';
         $(".eventMonitoring").css("display", "none");
         $("#includedContent").css("display", "block");
     });
 
     $("#currentEvents").click(() => {
+        $("#currentEvents").css("background-color", "palevioletred");
+        $("#chart").css("background-color", "");
         $("#includedContent").css("display", "none");
         $(".eventMonitoring").css("display", "block");
     });
