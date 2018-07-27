@@ -6,7 +6,7 @@ function plotAllGraphs() {
     plotGraph("Customer", "chart3");
     plotGraph("Fraud", "chart4");
 }
-var chartColorIndex = 0;
+var chartColorIndex = 0, chartConfig;
 
 function plotGraph(eventCategory, chartId) {
     var graph = {
@@ -15,7 +15,7 @@ function plotGraph(eventCategory, chartId) {
     $.getJSON('/notifications', graph, function (results) {
         console.log("results in graph", (results));
         if(Object.keys(results)) {
-                new Chart(document.getElementById(chartId).getContext("2d"), {
+                chartConfig = {
                 type: 'line',
                 data: {
                     labels: (function() { 
@@ -67,6 +67,12 @@ function plotGraph(eventCategory, chartId) {
                     yAxes : [{
                         ticks : {
                             min : 0,
+                            userCallback: function(label) {
+                                // when the floored value is the same as the value we have a whole number
+                                if (Math.floor(label) === label) {
+                                    return label;
+                                }
+                            },
                             // suggestedMax: 1000,
                             // stepSize: 100,
                         }
@@ -80,7 +86,17 @@ function plotGraph(eventCategory, chartId) {
                     },
                     responsiveAnimationDuration: 0
                 },
-            });
+                plugins: [
+                    {
+                        beforeInit: function(chartConfig) {
+                            chartConfig.data.datasets.forEach((dataset) => {
+                                var eventTotal = dataset.data.reduce((a,b) => a + b, 0);
+                                dataset.label = dataset.label +  " = "+ eventTotal;
+                            });
+                        }
+                    }]
+                }
+                new Chart(document.getElementById(chartId).getContext("2d"), chartConfig);
         }
     });
 }
