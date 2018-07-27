@@ -7,6 +7,7 @@ var socket = io();
  */
 $(() => {
     $("#includedContent").load("../mainChart.html");
+    $.getScript("./javascripts/mainChart.js");
 
     $("#chart").click(() => {
         $("#chart").css("background-color", "palevioletred");
