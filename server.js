@@ -32,9 +32,6 @@ function databaseInitialize() {
         db.addCollection("testnotifications");
     }
 
-    if (!db.getCollection("eventsFrequency")) {
-        db.addCollection("eventsFrequency");
-    }
     // console.log("available testnotif are :\n", db.getCollection("testnotifications").find())
     // db.getCollection("testnotifications").chain().remove();
 }
@@ -45,43 +42,89 @@ function calculateLastXDays(x) {
     while (x > 0) {
         tempDate = new Date(new Date().setDate(new Date().getDate()- x + 1))
                    .toISOString().slice(0, 10);
-        recentDateMap[tempDate] = 0;
+        recentDateMap[tempDate] = {};
         --x;
     }
     return recentDateMap;
 }
 
-function getRecentGraph(eventCategory, noOfDays) {
-    var recentDateMap = calculateLastXDays(noOfDays);
+function getGraphData(eventFilter, eventKeyList, calculateParameter) {
+    var recentDateMap = calculateLastXDays(noOfDaysGraph);
     var testnotifications = db.getCollection("testnotifications");
-    var eventFilter;
-    if(eventCategory === "payment"){
-        eventFilter =  [
-            "net.authorize.payment.authcapture.created",
-            "net.authorize.payment.priorAuthCapture.created",
-            "net.authorize.payment.capture.created"
-        ];
-    }
-    else if(eventCategory === "refund"){
-        eventFilter =  [
-            "net.authorize.payment.refund.created",
-            "net.authorize.payment.void.created"
-        ];
+    var recentDocs = testnotifications.find({eventType: { $in: eventFilter } });
+    // TODO: null check recentDocs
+    // TODO: ends here
+    if(!(eventKeyList === undefined || eventKeyList.length === 0)) {
+        eventKeyList.forEach((eventKey) => {
+            Object.keys(recentDateMap).forEach((eachDate) => {
+                recentDateMap[eachDate][eventKey] = 0;
+            });
+        });
     }
 
-    var recentDocs = testnotifications.find({eventType: { $in: eventFilter } });
-    // console.log("payment doc count: ", recentDocs.length)
-    // TODO: null check recentDocs
+    // console.log("recentDateMap after [] ", (recentDateMap));
+    console.log("recentDocs ", recentDocs.length);
     recentDocs.forEach( (element) => {
         var elementDate = new Date(element.eventDate)
-                          .toISOString().slice(0, 10);
+                .toISOString().slice(0, 10);
+        
         if(elementDate in recentDateMap) {
-            recentDateMap[elementDate] +=  parseInt(element.payload.authAmount);
+            Object.keys(recentDateMap[elementDate]).forEach((eventLegend) => {
+                if(eventKeyList.includes(eventLegend)) {
+                    if(calculateParameter === "amount") {
+                        recentDateMap[elementDate][eventLegend] += parseInt(element.payload.authAmount);
+                    }
+                    else if(calculateParameter === "count") {
+                        recentDateMap[elementDate][eventLegend] += 1;
+                    }
+                }
+                else {
+                    recentDateMap[elementDate][eventLegend] = 0;
+                }
+            });
         }
+
     });
-    // TODO: ends here
-    // console.log("recentdate map is\n ", recentDateMap);
     return recentDateMap;
+}
+
+function setGraphCriteria(eventCategory) {
+    var eventFilter, eventKeyList, calculateParameter;
+    switch(eventCategory) {
+        case "Payment":
+                eventFilter =  [
+                    "net.authorize.payment.authcapture.created",
+                    "net.authorize.payment.priorAuthCapture.created",
+                    "net.authorize.payment.capture.created"
+                ];
+                eventKeyList = ["Total Amount", "second dataset"];
+                calculateParameter = "amount";
+                break;
+        case "Refund":
+                eventFilter =  [
+                    "net.authorize.payment.refund.created",
+                    "net.authorize.payment.void.created"
+                ];
+                eventKeyList = ["Refund Amount"];
+                calculateParameter = "amount";
+                break;
+        case "Customer":
+                eventFilter =  [
+                    "net.authorize.customer.created"
+                ];
+                eventKeyList = ["# of Payment Profile", "# of Subscription Created"];
+                calculateParameter = "count";
+                break;
+        case "Fraud":
+                eventFilter =  [
+                    "net.authorize.payment.fraud.held"
+                ];
+                eventKeyList = ["Payment fraud held"];
+                calculateParameter = "amount";
+                break;
+    }
+
+    return getGraphData(eventFilter, eventKeyList, calculateParameter);
 }
 
 app.post("/notifications", function (req, res) {
@@ -91,39 +134,14 @@ app.post("/notifications", function (req, res) {
         var oldestNotification = testnotifications.chain()
                                  .simplesort("eventDate").limit(1).data();
         testnotifications.remove(oldestNotification);
-        // Decrement the oldest event's count in eventsFrequency collection
-        decrementEventOccurrence(oldestNotification[0].eventType);
     }
     testnotifications.insert(req.body);
-    incrementEventOccurrence(req.body.eventType);
-    var eventsFrequency = db.getCollection("eventsFrequency");
-    var eventsfrequencyWithoutMetadata = eventsFrequency
-                                         .chain().data({removeMeta: true});
     io.emit("new event", {
         eventDetails: (req.body),
-        eventsCountList: eventsfrequencyWithoutMetadata
+        // eventsCountList: eventsfrequencyWithoutMetadata
     });
     res.sendStatus(200);
 });
-
-function decrementEventOccurrence(event) {
-    var eventsFrequency = db.getCollection("eventsFrequency");
-    var currentEvent = eventsFrequency.findOne({eventType: event });
-    currentEvent.count = currentEvent.count - 1;
-    eventsFrequency.update(currentEvent);
-}
-
-function incrementEventOccurrence(event) {
-    var eventsFrequency = db.getCollection("eventsFrequency");
-    var currentEvent = eventsFrequency.findOne({eventType: event });
-    if(currentEvent) {
-        currentEvent.count = currentEvent.count + 1;
-        eventsFrequency.update(currentEvent);
-    }
-    else {
-        eventsFrequency.insert({eventType: event, count: 1});
-    }
-}
 
 function calculateEventGraphInterval(startTime) {
     console.log("start time: ", startTime);
@@ -152,9 +170,9 @@ function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
         graphEvents.forEach(function(event) {
             var timeDiff = Math.abs(new Date(event.eventDate).getTime() - new Date(graphTimeList[0]).getTime());
             var index = Math.ceil(timeDiff/ (config.graph.intervalTimeSeconds * 1000));
-            console.log(" graphtimelist length =", graphTimeList.length);
-            console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index);
-            console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index, "to insert at ", graphTimeList[index].toISOString());
+            // console.log(" graphtimelist length =", graphTimeList.length);
+            // console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index);
+            // console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index, "to insert at ", graphTimeList[index].toISOString());
             if (eventFrequencyAtEachTimeMap[event.eventType] === undefined || eventFrequencyAtEachTimeMap[event.eventType].length == 0) {
                 eventFrequencyAtEachTimeMap[event.eventType] = new Array(config.graph.graphTimeScale).fill(0);
                 eventFrequencyAtEachTimeMap[event.eventType][index-1] = 1;
@@ -246,16 +264,11 @@ app.get("/notifications", async function (req, res) {
     // console.log("request graph parameter in /notif is: ", req.graph);
     var returnValue;
     if(req.query.name === "all"){
-        var eventsFrequency = db.getCollection("eventsFrequency");
-        returnValue = eventsFrequency.chain().data({removeMeta: true});
     }
     else
-        returnValue = await getRecentGraph(req.query.name, noOfDaysGraph);
-    // Formatting in JSON style
-    var returnJsonValue = {
-        paymentDetail: returnValue,
-    };
-    returnApiResponse(res, returnJsonValue);
+        returnValue = await setGraphCriteria(req.query.name);
+    console.log("return value in get notif", returnValue);
+    returnApiResponse(res, returnValue);
 });
 
 app.use((req, res, next) => {
