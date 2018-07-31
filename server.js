@@ -40,15 +40,15 @@ function calculateLastXDays(x) {
     var recentDateMap = {};
     var tempDate;
     while (x > 0) {
-        tempDate = new Date(new Date().setDate(new Date().getDate()- x + 1))
-                   .toISOString().slice(0, 10);
+        var someDate = new Date(new Date().setDate(new Date().getDate()- x + 1)).toISOString().slice(0,10).split('-');   
+        tempDate = someDate[1] +'-'+ someDate[2] +'-'+ someDate[0];
         recentDateMap[tempDate] = {};
         --x;
     }
     return recentDateMap;
 }
 
-function getGraphData(eventFilter, eventKeyList, calculateParameter) {
+function getGraphData(eventFilter, eventKeyList, calculateParameter, filterObject) {
     var recentDateMap = calculateLastXDays(noOfDaysGraph);
     var testnotifications = db.getCollection("testnotifications");
     var recentDocs = testnotifications.find({eventType: { $in: eventFilter } });
@@ -62,11 +62,10 @@ function getGraphData(eventFilter, eventKeyList, calculateParameter) {
         });
     }
 
-    // console.log("recentDateMap after [] ", (recentDateMap));
     console.log("recentDocs ", recentDocs.length);
     recentDocs.forEach( (element) => {
-        var elementDate = new Date(element.eventDate)
-                .toISOString().slice(0, 10);
+        var tempDate = element.eventDate.slice(0, 10).split('-');   
+        var elementDate = tempDate[1] +'-'+ tempDate[2] +'-'+ tempDate[0];
         
         if(elementDate in recentDateMap) {
             Object.keys(recentDateMap[elementDate]).forEach((eventLegend) => {
@@ -97,7 +96,8 @@ function setGraphCriteria(eventCategory) {
                     "net.authorize.payment.priorAuthCapture.created",
                     "net.authorize.payment.capture.created"
                 ];
-                eventKeyList = ["Total Amount", "second dataset"];
+                // eventKeyList = ["Total Amount", "second dataset"];
+                eventKeyList = ["Total Payment Amount"];
                 calculateParameter = "amount";
                 break;
         case "Refund":
@@ -112,27 +112,28 @@ function setGraphCriteria(eventCategory) {
                 eventFilter =  [
                     "net.authorize.customer.created"
                 ];
-                eventKeyList = ["# of Payment Profile", "# of Subscription Created"];
+                // eventKeyList = ["# of Payment Profile", "# of Subscription Created"];
+                eventKeyList = ["# of Payment Profile created"];
                 calculateParameter = "count";
                 break;
         case "Fraud":
                 eventFilter =  [
                     "net.authorize.payment.fraud.held"
                 ];
-                eventKeyList = ["Payment fraud held"];
+                eventKeyList = ["Fraud held Amount"];
                 calculateParameter = "amount";
                 break;
     }
 
-    return getGraphData(eventFilter, eventKeyList, calculateParameter);
+    return getGraphData(eventFilter, eventKeyList, calculateParameter, filterObject);
 }
 
 app.post("/notifications", function (req, res) {
     var testnotifications = db.getCollection("testnotifications");
-    if (testnotifications.count() == dbSize) {
+    if (testnotifications.count() >= dbSize) {
         // Get oldest entry available in the DB (event with oldest eventDate)
         var oldestNotification = testnotifications.chain()
-                                 .simplesort("eventDate").limit(1).data();
+                                 .limit(1).data();
         testnotifications.remove(oldestNotification);
     }
     testnotifications.insert(req.body);
@@ -156,7 +157,6 @@ function calculateEventGraphInterval(startTime) {
         graphTimeList.push(newTime);
         newTime = new Date(newTime.getTime() + (1000 * config.graph.intervalTimeSeconds));
     }
-    console.log("time list:\n", graphTimeList);
     return graphTimeList;
 }
 
@@ -188,56 +188,59 @@ function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
     return eventFrequencyAtEachTimeMap;
 }
 
-app.get("/eventsGraphData", async function(req, res) {
-    var currentTime = new Date();
-    var calculateFromTime = new Date(new Date().setTime(currentTime.getTime()- (1000 * config.graph.intervalTimeSeconds * config.graph.graphTimeScale)));
-    var graphStartTime = new Date(calculateFromTime.getTime() + (1000 * config.graph.intervalTimeSeconds));
+async function getGraphEventsFromDB(testnotifications, graphStartTime) {
+    return testnotifications.chain().where(function(obj) {
+        return  graphStartTime < new Date(obj.eventDate)}).data();
+} 
 
-    var graphTimeList = calculateEventGraphInterval(calculateFromTime);
+async function getAllEventsChart() {
+        var currentTime = new Date();
+        var calculateFromTime = new Date(new Date().setTime(currentTime.getTime()- (1000 * config.graph.intervalTimeSeconds * config.graph.graphTimeScale)));
+        var graphStartTime = new Date(calculateFromTime.getTime() + (1000 * config.graph.intervalTimeSeconds));
+    
+        var graphTimeList = calculateEventGraphInterval(calculateFromTime);
+        try {
+            var testnotifications = await getCollectionFunction("testnotifications");
 
-    getCollectionFunction("testnotifications")
-        .then((testnotifications) => {
-            var graphEvents = testnotifications.chain().where(function(obj) {
-                return  graphStartTime < new Date(obj.eventDate)}).data();
-                // console.log("graph events",graphEvents )
-            return graphEvents;
-        })
-        .then((graphEvents) =>{
+            var graphEvents = await getGraphEventsFromDB(testnotifications, graphStartTime);
+
             var eventFrequencyAtEachTimeMap = findEventsFrequencyInGraphInterval(graphTimeList, graphEvents);
-            var returnJsonValue = {
+
+            return {
                 eventFrequencyAtEachTimeMap: eventFrequencyAtEachTimeMap,
                 graphStartTime: graphTimeList[1],
                 intervalTimeSeconds: config.graph.intervalTimeSeconds
             };
-            returnApiResponse(res, returnJsonValue);
-        })
-        .catch((err) => { console.log("error happened in getting graphEvents", err) });
-});
+        }catch(err) {
+            console.error("Error happened in getting graphEvents ", err);
+            return {};
+        }
+}
 
 /**
  * API endpoint to return recent requested number of notifications
  */
-app.get("/recentNotifications", async function(req, res) {
+app.get("/notifications", async function(req, res) {
     var testnotifications = db.getCollection("testnotifications");
-    var recentNotifications = testnotifications.chain()
-                              .simplesort("eventDate");
+    var recentNotifications;
     // If requesting count of notifications is less than number of notifications
     // present in database, return the most recent requested number of
     // notifications
-    if (testnotifications.count() > req.query.count)
-        recentNotifications = recentNotifications
-                              .limit(req.query.count)
-                              .data({removeMeta: true});
-
+    console.log("NoOfRecentEventsToDisplay ", req.query.limit);
+    if (testnotifications.count() > req.query.limit) {
+        var maxId = testnotifications.maxId;
+        recentNotifications = testnotifications
+                                .chain()
+                                .find({ $loki: { $between: [maxId - req.query.limit + 1, maxId] } })
+                                .data({removeMeta: true});
+    }
     // If requesting count of notifications is more than number of notifications
     // present in database, return all available notifications in database
     else
-        recentNotifications = recentNotifications
-                              .data({removeMeta: true});
-    // Formatting in JSON style
-    var returnJsonValue = {
-        recentNotifications: recentNotifications,
-    };
+        recentNotifications = testnotifications
+                                .chain()
+                                .data({removeMeta: true});
+
     returnApiResponse(res, recentNotifications);
 });
 
@@ -249,25 +252,28 @@ app.get("/recentNotifications", async function(req, res) {
 function returnApiResponse(res, returnJsonValue) {
     res.format({
         html: function () {
-            res.json({
-                error: "Page not found !!"
-            });
+            // res.json({
+            //     error: "Page not found !!"
+            // });
+            res.send(returnJsonValue);
         },
         json: function () {
-            res.json(returnJsonValue);
+            // res.json(returnJsonValue);
+            res.send(returnJsonValue);
         }
     });
 }
 
-app.get("/notifications", async function (req, res) {
+app.get("/charts", async function (req, res) {
     console.log("------------------------------------");
     // console.log("request graph parameter in /notif is: ", req.graph);
     var returnValue;
     if(req.query.name === "all"){
+        returnValue = await getAllEventsChart();
     }
     else
         returnValue = await setGraphCriteria(req.query.name);
-    console.log("return value in get notif", returnValue);
+    // console.log("return value in get notif", returnValue);
     returnApiResponse(res, returnValue);
 });
 
