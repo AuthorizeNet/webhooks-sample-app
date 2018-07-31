@@ -8,7 +8,8 @@ var socket = io();
 $(() => {
     $("#includedContent").load("../mainChart.html");
     $.getScript("./javascripts/mainChart.js");
-
+    $("#currentEvents").css("background-color", "palevioletred");
+    
     $("#chart").click(() => {
         $("#chart").css("background-color", "palevioletred");
         $("#currentEvents").css("background-color", "");
@@ -29,7 +30,8 @@ $(() => {
  * Call API to populate the recent events when the either
  * page is initially loaded or refreshed
  */
-$.getJSON("/recentNotifications", { count: 5 }, function (results) {
+$.getJSON("/notifications", {limit: CONFIG.NoOfNotificationsToDisplay }, function (results) {
+    console.log("config.NoOfNotificationsToDisplay in index ", CONFIG.NoOfNotificationsToDisplay);
     results.forEach((element) =>
                     displayEventMessage(element));
 });
@@ -74,7 +76,7 @@ function onNewEvent(body) {
 async function displayEventMessage(eventDetails) {
     var eventDate = formatEventDate(eventDetails.eventDate);
     var mainPanel = document.getElementById("panelCurrentEvent");
-    if(mainPanel.childElementCount == 5) {
+    if(mainPanel.childElementCount >= CONFIG.NoOfNotificationsToDisplay) {
         mainPanel.removeChild(mainPanel.lastChild);
     }
     var newPanel = document.createElement("div");
@@ -82,7 +84,7 @@ async function displayEventMessage(eventDetails) {
 
     var newPanelRow = document.createElement("div");
     newPanelRow.classList.add("row");
-    newPanelRow.setAttribute("style", "background-color: khaki;");
+    newPanelRow.setAttribute("style", "background-color: khaki;margin: 0px auto;text-align: left;width: 100%;");
 
     var newPanelColTimestamp = document.createElement("div");
     newPanelColTimestamp.classList.add("col-md-2");
@@ -93,13 +95,13 @@ async function displayEventMessage(eventDetails) {
     newPanelColEventtype.classList.add("col-md-6");
     var ColEventtypeTextnode = document.createTextNode("" + eventDetails.eventType);
     newPanelColEventtype.style.wordBreak = "break-all";
+    newPanelColEventtype.setAttribute("style", "padding: 0px;text-align: center;");
     newPanelColEventtype.appendChild(ColEventtypeTextnode);
 
     var newPanelColPayload = document.createElement("div");
     newPanelColPayload.classList.add("col-md-4");
     var ColPayloadTextnode = document.createElement("pre");
-    ColPayloadTextnode.setAttribute("style", "background-color: lightgreen;");
-    // Remove '{' and '}' from JSON String
+    ColPayloadTextnode.setAttribute("style", "background-color: lightgreen;padding: 0px;margin: 0px auto;");
     var formatedPayload = JSON.stringify(eventDetails.payload, null, "\t")
                             .slice(2).slice(0, -1);
     ColPayloadTextnode.textContent = formatedPayload;
