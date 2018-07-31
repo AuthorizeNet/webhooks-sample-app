@@ -12,10 +12,10 @@ function plotGraph(eventCategory, chartId) {
     var graph = {
         name: eventCategory
     };
-    $.getJSON('/notifications', graph, function (results) {
+    $.getJSON('/charts', graph, function (results) {
         console.log("results in graph", (results));
         if(Object.keys(results)) {
-                chartConfig = {
+            chartConfig = {
                 type: 'line',
                 data: {
                     labels: (function() { 
@@ -55,6 +55,15 @@ function plotGraph(eventCategory, chartId) {
                             } ())
                 },
                 options: {
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                var label = (data.datasets[tooltipItem.datasetIndex].label).split("=")[0] || '';
+                                var labelValue = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index] || 0;
+                                return label + ": " + labelValue;
+                            }
+                        }
+                    },
                     title: {
                         display: true,
                         text: eventCategory,
@@ -64,19 +73,33 @@ function plotGraph(eventCategory, chartId) {
                         position: "top",
                     },
                     scales: {
-                    yAxes : [{
-                        ticks : {
-                            min : 0,
-                            userCallback: function(label) {
-                                // when the floored value is the same as the value we have a whole number
-                                if (Math.floor(label) === label) {
-                                    return label;
-                                }
+                        xAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Date',
+                                fontStyle: "bold",
+                                fontSize: 14
+                            }
+                        }],
+                        yAxes : [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Total',
+                                fontStyle: "bold",
+                                fontSize: 14
                             },
-                            // suggestedMax: 1000,
-                            // stepSize: 100,
-                        }
-                    }]
+                            ticks : {
+                                min : 0,
+                                userCallback: function(label) {
+                                    // when the floored value is the same as the value we have a whole number
+                                    if (Math.floor(label) === label) {
+                                        return label;
+                                    }
+                                }
+                                // suggestedMax: 1000,
+                                // stepSize: 100,
+                            }
+                        }]
                     },
                     animation: {
                         duration: 0,
@@ -93,10 +116,11 @@ function plotGraph(eventCategory, chartId) {
                                 var eventTotal = dataset.data.reduce((a,b) => a + b, 0);
                                 dataset.label = dataset.label +  " = "+ eventTotal;
                             });
-                        }
-                    }]
-                }
-                new Chart(document.getElementById(chartId).getContext("2d"), chartConfig);
+                        },
+                    }
+                ]
+            }
+            new Chart(document.getElementById(chartId).getContext("2d"), chartConfig);
         }
     });
 }
