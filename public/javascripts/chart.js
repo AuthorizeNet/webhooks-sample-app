@@ -28,15 +28,16 @@ var config,
     myLine,
     colorNames = Object.keys(chartColors);
 
-$.getJSON("/eventsGraphData", function (results) {
+$.getJSON('/charts', {name: "all"}, function (results) {
     console.log("eventFrequencyAtEachTimeMap in chart page looks like: ", (results.eventFrequencyAtEachTimeMap));
 
-    if (! (Object.keys(results.eventFrequencyAtEachTimeMap) === undefined || Object.keys(results.eventFrequencyAtEachTimeMap).length == 0)) {
+    // if (! (Object.keys(results.eventFrequencyAtEachTimeMap) === undefined || Object.keys(results.eventFrequencyAtEachTimeMap).length === 0)) {
         config = {
-            type: 'line',
+            type: "line",
             data: {
                 labels: (function() {
                             var timeLabelList = [];
+                            // Cannot read property 'length' of undefined
                             for(var i=0; i<Object.values(results.eventFrequencyAtEachTimeMap)[0].length; ++i)
                                 timeLabelList.push(new Date(new Date(results.graphStartTime).getTime() + (i * 1000 * results.intervalTimeSeconds)).toISOString());
 
@@ -62,7 +63,7 @@ $.getJSON("/eventsGraphData", function (results) {
             options: {
                 title: {
                     display: true,
-                    text: 'Event Tracker',
+                    text: "Event Tracker",
                     fontSize: 20
                 },
                 legend:{
@@ -70,6 +71,12 @@ $.getJSON("/eventsGraphData", function (results) {
                 },
                 scales: {
                 xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: "Time",
+                        fontStyle: "bold",
+                        fontSize: 16
+                    },
                     ticks: {
                         callback: function(value) {
                                     var formattedTime = new Date(value).toISOString().split("T");
@@ -79,6 +86,12 @@ $.getJSON("/eventsGraphData", function (results) {
                     }
                 }],
                 yAxes : [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: "# of Events",
+                        fontStyle: "bold",
+                        fontSize: 14
+                    },
                     ticks : {
                         min : 0,
                         suggestedMax: 15,
@@ -118,24 +131,26 @@ $.getJSON("/eventsGraphData", function (results) {
             }
         ]
         };
-    }
+    // }
 
     $(document).ready(function() {
         var ctx = document.getElementById("chartBox").getContext("2d");
         myLine = new Chart(ctx, config);
     });
     var stopGraphUpdate = setInterval(function () {
-        console.log("\n in set interval\n");
+        // console.log("\n in set interval\n");
         updateLiveEventGraph(results.intervalTimeSeconds, eventFrequencyInGraphInterval);
         eventFrequencyInGraphInterval = {};
-    }, 4000);
+    }, 7000);
 });
 
 function updateLiveEventGraph(intervalTimeSeconds, eventFrequencyInGraphInterval) {
-    console.log("\n eventFrequencyInGraphInterval is \n", eventFrequencyInGraphInterval);
-
-    updateXAxis(intervalTimeSeconds);
-    // if (! (Object.keys(eventFrequencyInGraphInterval) === undefined || Object.keys(eventFrequencyInGraphInterval).length == 0)) {
+    // console.log("\n eventFrequencyInGraphInterval is \n", eventFrequencyInGraphInterval);
+    if(config.data.datasets) {
+        updateXAxis(intervalTimeSeconds);
+    }
+    
+    // if (! (Object.keys(eventFrequencyInGraphInterval) === undefined || Object.keys(eventFrequencyInGraphInterval).length === 0)) {
         config.data.datasets.forEach((dataset, index, datasetsList)=> {
             var updatedFrequencyFlag = false;
             Object.keys(eventFrequencyInGraphInterval).forEach(function(newEvent) {
