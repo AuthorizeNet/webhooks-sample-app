@@ -23,6 +23,9 @@ var db = new loki(config.db.name, {
   autosaveInterval: 4000
 });
 
+/**
+ * Initialize the collection
+ */
 function databaseInitialize() {
     if (!db.getCollection("notifications")) {
         db.addCollection("notifications");
@@ -36,6 +39,10 @@ function databaseInitialize() {
     // db.getCollection("testnotifications").chain().remove();
 }
 
+/**
+ * Returns a map of recent x dates as keya a and empty olbject as values
+ * @param {number} x 
+ */
 function calculateLastXDays(x) {
     var recentDateMap = {};
     var tempDate;
@@ -48,12 +55,30 @@ function calculateLastXDays(x) {
     return recentDateMap;
 }
 
-function getGraphData(eventFilter, eventKeyList, calculateParameter, filterObject) {
+/**
+ * Filter based on event list from DB
+ * @param {*} testnotifications 
+ * @param {Array} eventFilter 
+ */
+async function getMatchingEventsFromDB(testnotifications, eventFilter) {
+    return testnotifications.find({eventType: { $in: eventFilter } });
+} 
+
+/**
+ * Calculates the date range and values to plot in chart based on input parameters
+ * @param {Array} eventFilter 
+ * @param {Array} eventKeyList 
+ * @param {string} calculateParameter 
+ */
+async function getGraphData(eventFilter, eventKeyList, calculateParameter) {
     var recentDateMap = calculateLastXDays(noOfDaysGraph);
-    var testnotifications = db.getCollection("testnotifications");
-    var recentDocs = testnotifications.find({eventType: { $in: eventFilter } });
-    // TODO: null check recentDocs
-    // TODO: ends here
+    
+    var testnotifications = await getCollectionFunction("testnotifications");
+
+    var recentDocs = await getMatchingEventsFromDB(testnotifications, eventFilter);
+
+    // If recentDocs is null, the charts are displayed with all values as zero
+    // for each date in recentDateMap
     if(!(eventKeyList === undefined || eventKeyList.length === 0)) {
         eventKeyList.forEach((eventKey) => {
             Object.keys(recentDateMap).forEach((eachDate) => {
@@ -87,7 +112,11 @@ function getGraphData(eventFilter, eventKeyList, calculateParameter, filterObjec
     return recentDateMap;
 }
 
-function setGraphCriteria(eventCategory) {
+/**
+ * Define what to display in the chart and call getGraphData() with it
+ * @param {string} eventCategory 
+ */
+async function setGraphCriteria(eventCategory) {
     var eventFilter, eventKeyList, calculateParameter;
     switch(eventCategory) {
         case "Payment":
@@ -100,50 +129,118 @@ function setGraphCriteria(eventCategory) {
                 eventKeyList = ["Total Payment Amount"];
                 calculateParameter = "amount";
                 break;
+        
         case "Refund":
                 eventFilter =  [
                     "net.authorize.payment.refund.created",
                     "net.authorize.payment.void.created"
                 ];
-                eventKeyList = ["Refund Amount"];
+                eventKeyList = ["Total Refund Amount"];
                 calculateParameter = "amount";
                 break;
+        
         case "Customer":
                 eventFilter =  [
                     "net.authorize.customer.created"
                 ];
-                // eventKeyList = ["# of Payment Profile", "# of Subscription Created"];
-                eventKeyList = ["# of Payment Profile created"];
+                eventKeyList = ["# of Customer Profile created"];
                 calculateParameter = "count";
                 break;
+        
         case "Fraud":
                 eventFilter =  [
                     "net.authorize.payment.fraud.held"
                 ];
-                eventKeyList = ["Fraud held Amount"];
-                calculateParameter = "amount";
+                eventKeyList = ["# of Fraud transactions held"];
+                calculateParameter = "count";
                 break;
     }
 
-    return getGraphData(eventFilter, eventKeyList, calculateParameter, filterObject);
+    var recentDateMap = await getGraphData(eventFilter, eventKeyList, calculateParameter);
+    return recentDateMap;
 }
 
-app.post("/notifications", function (req, res) {
-    var testnotifications = db.getCollection("testnotifications");
+/**
+ * Returns the oldest notification present
+ * @param {*} testnotifications 
+ */
+async function getOldestNotification(testnotifications) {
+    return testnotifications.chain().limit(1).data();
+}
+
+/**
+ * Removes the oldest notification from available set of notifications
+ * @param {*} testnotifications 
+ * @param {*} oldestNotification 
+ */
+async function removeOldestNotification(testnotifications, oldestNotification) {
+    testnotifications.remove(oldestNotification);
+    return testnotifications;
+}
+
+/**
+ * Retrieves and Deletes the oldest notification present in the set of notifications
+ * @param {*} testnotifications 
+ */
+async function handleOldestNotification(testnotifications) {
     if (testnotifications.count() >= dbSize) {
-        // Get oldest entry available in the DB (event with oldest eventDate)
-        var oldestNotification = testnotifications.chain()
-                                 .limit(1).data();
-        testnotifications.remove(oldestNotification);
+        var oldestNotification = await getOldestNotification(testnotifications);
+        testnotifications = await removeOldestNotification(testnotifications,oldestNotification);
+        return testnotifications;
     }
-    testnotifications.insert(req.body);
-    io.emit("new event", {
-        eventDetails: (req.body),
-        // eventsCountList: eventsfrequencyWithoutMetadata
-    });
-    res.sendStatus(200);
+    else {
+        return testnotifications;
+    }
+}
+
+/**
+ * Initializes current set of notifications and removes the oldest one from it
+ */
+async function updateNotifications() {
+    var testnotifications = await getCollectionFunction("testnotifications");
+    testnotifications = await handleOldestNotification(testnotifications);
+
+    console.log("testnotifications.count after removing ", testnotifications.count());
+    return testnotifications;
+}
+
+/**
+ * Insert incoming new notification into available notifications set and returns the new set
+ * @param {*} testnotifications 
+ * @param {*} newNotification 
+ */
+async function insertNewNotification(testnotifications, newNotification) {
+    testnotifications.insert(newNotification);
+    return testnotifications;
+}
+
+/**
+ * Handles POST message to "/notifications" endpoint. Updates notifications set, inserts
+ * new notification, emit a new event to be captured by front end code
+ */
+app.post("/notifications", async function (req, res) {
+    try {
+        var testnotifications = await updateNotifications();
+
+        testnotifications = await insertNewNotification(testnotifications, req.body);
+        
+        console.log("testnotifications.count after inserting new notification", testnotifications.count());
+        
+        io.emit("newNotification", {
+            eventDetails: (req.body),
+        });
+
+        res.sendStatus(201);
+    }catch(err) {
+        console.error("Error happened in posting notifications ", err);
+        res.sendStatus(500);
+    }
 });
 
+/**
+ * Finds the time values to be plotted in live event chart and returns as an Array
+ * @param {Date} startTime 
+ */
 function calculateEventGraphInterval(startTime) {
     console.log("start time: ", startTime);
     var newTime = new Date(startTime.getTime() + (1000 * config.graph.intervalTimeSeconds));
@@ -160,19 +257,26 @@ function calculateEventGraphInterval(startTime) {
     return graphTimeList;
 }
 
-function getCollectionFunction(collectionName) {
-    return new Promise((resolve) => resolve(db.getCollection(collectionName)));
+/**
+ * Gets the collection from database
+ * @param {string} collectionName 
+ */
+async function getCollectionFunction(collectionName) {
+    return db.getCollection(collectionName);
 }
 
+/**
+ * Returns the mapping of eventType and it count of occurrence
+ * @param {Array} graphTimeList 
+ * @param {*} graphEvents 
+ */
 function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
     var eventFrequencyAtEachTimeMap = {}; // {"event1": [4,0,3,1,0,6,2,3,0,0], "event2": [0,0,5,3,2,0,5,7,8,9]}
     if(graphEvents) {
         graphEvents.forEach(function(event) {
             var timeDiff = Math.abs(new Date(event.eventDate).getTime() - new Date(graphTimeList[0]).getTime());
             var index = Math.ceil(timeDiff/ (config.graph.intervalTimeSeconds * 1000));
-            // console.log(" graphtimelist length =", graphTimeList.length);
-            // console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index);
-            // console.log(event.eventType, " occured at ", event.eventDate, "and index is ", index, "to insert at ", graphTimeList[index].toISOString());
+            
             if (eventFrequencyAtEachTimeMap[event.eventType] === undefined || eventFrequencyAtEachTimeMap[event.eventType].length == 0) {
                 eventFrequencyAtEachTimeMap[event.eventType] = new Array(config.graph.graphTimeScale).fill(0);
                 eventFrequencyAtEachTimeMap[event.eventType][index-1] = 1;
@@ -188,11 +292,19 @@ function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
     return eventFrequencyAtEachTimeMap;
 }
 
-async function getGraphEventsFromDB(testnotifications, graphStartTime) {
+/**
+ * Returns the notifications occurred after the graph start time
+ * @param {*} testnotifications 
+ * @param {Date} graphStartTime 
+ */
+async function filterToGetGraphEvents(testnotifications, graphStartTime) {
     return testnotifications.chain().where(function(obj) {
-        return  graphStartTime < new Date(obj.eventDate)}).data();
+        return  graphStartTime < new Date(obj.eventDate)}).data({removeMeta: true});
 } 
 
+/**
+ * Returns the data required for live event chart
+ */
 async function getAllEventsChart() {
         var currentTime = new Date();
         var calculateFromTime = new Date(new Date().setTime(currentTime.getTime()- (1000 * config.graph.intervalTimeSeconds * config.graph.graphTimeScale)));
@@ -202,7 +314,7 @@ async function getAllEventsChart() {
         try {
             var testnotifications = await getCollectionFunction("testnotifications");
 
-            var graphEvents = await getGraphEventsFromDB(testnotifications, graphStartTime);
+            var graphEvents = await filterToGetGraphEvents(testnotifications, graphStartTime);
 
             var eventFrequencyAtEachTimeMap = findEventsFrequencyInGraphInterval(graphTimeList, graphEvents);
 
@@ -218,29 +330,52 @@ async function getAllEventsChart() {
 }
 
 /**
- * API endpoint to return recent requested number of notifications
+ * Returns recent notifications by filtering from available set
+ * @param {*} testnotifications 
+ * @param {*} limit 
  */
-app.get("/notifications", async function(req, res) {
-    var testnotifications = db.getCollection("testnotifications");
+async function filterToGetRecentNotifications(testnotifications, limit) {
     var recentNotifications;
-    // If requesting count of notifications is less than number of notifications
-    // present in database, return the most recent requested number of
-    // notifications
-    console.log("NoOfRecentEventsToDisplay ", req.query.limit);
-    if (testnotifications.count() > req.query.limit) {
+    if (testnotifications.count() > limit) {
         var maxId = testnotifications.maxId;
-        recentNotifications = testnotifications
+        var recentNotifications = testnotifications
                                 .chain()
-                                .find({ $loki: { $between: [maxId - req.query.limit + 1, maxId] } })
+                                .find({ $loki: { $between: [maxId - limit + 1, maxId] } })
                                 .data({removeMeta: true});
     }
     // If requesting count of notifications is more than number of notifications
     // present in database, return all available notifications in database
     else
-        recentNotifications = testnotifications
+        var recentNotifications = testnotifications
                                 .chain()
                                 .data({removeMeta: true});
+    return recentNotifications;
+}
 
+/**
+ * Calls filterToGetRecentNotifications() to get the required recent notifications and returns it
+ * @param {number} limit 
+ */
+async function getRecentNotifications(limit) {
+    try {
+        var testnotifications = await getCollectionFunction("testnotifications");
+
+        var recentNotifications = await filterToGetRecentNotifications(testnotifications, limit);
+    
+        return recentNotifications;
+    }catch(err) {
+        console.error("Error happened in getting recent notifications ", err);
+        return [];
+    }
+}
+
+/**
+ * Endpoint to return recent requested number of notifications
+ */
+app.get("/notifications", async function(req, res) {
+     
+    var recentNotifications = await getRecentNotifications(req.query.limit);
+    console.log(recentNotifications);
     returnApiResponse(res, recentNotifications);
 });
 
@@ -251,19 +386,20 @@ app.get("/notifications", async function(req, res) {
  */
 function returnApiResponse(res, returnJsonValue) {
     res.format({
-        html: function () {
-            // res.json({
-            //     error: "Page not found !!"
-            // });
+        json: function () {
             res.send(returnJsonValue);
         },
-        json: function () {
-            // res.json(returnJsonValue);
-            res.send(returnJsonValue);
-        }
+        html: function () {
+            res.json({
+                error: "Page not found !!"
+            });
+        },
     });
 }
 
+/**
+ * Endpoint to get all the charts data
+ */
 app.get("/charts", async function (req, res) {
     console.log("------------------------------------");
     // console.log("request graph parameter in /notif is: ", req.graph);
@@ -277,10 +413,16 @@ app.get("/charts", async function (req, res) {
     returnApiResponse(res, returnValue);
 });
 
-app.use((req, res, next) => {
+/**
+ * Handles invalid URL
+ */
+app.use((req, res) => {
     res.status(404).send("<h2 align=center>Page Not Found!</h2>");
 });
 
+/**
+ * App listens on the configured port in config.js file
+ */
 server.listen(config.app.port, config.app.host, function () {
     console.log("Application listening on port ", server.address().port);
 });
