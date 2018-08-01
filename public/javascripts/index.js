@@ -1,27 +1,40 @@
 "use strict";
 // Initialize socket variable
 var socket = io();
+
 /**
  * Display either Event monitoring or dashboard of graphs
  * when the respective button is clicked
  */
 $(() => {
+    // Load the mainChart.html file that contains placeholder 
+    // payment, refund, customer and fraud charts 
     $("#includedContent").load("../mainChart.html");
+    // Include the mainChart.js file that has function for dashboard charts
     $.getScript("./javascripts/mainChart.js");
+
+    // By default enable the Event Monitoring tab
     $("#currentEvents").css("background-color", "palevioletred");
     
     $("#chart").click(() => {
+        // Change Dashboard tab's background color
         $("#chart").css("background-color", "palevioletred");
+        // Reset Event Monitoring tab's background color
         $("#currentEvents").css("background-color", "");
-        $("#currentEvents").hasClass('btn-color') ? removeClass('btn-color') : '';
+        // Hide the Event Monitoring tab's content
         $(".eventMonitoring").css("display", "none");
+        // Display the Dashboard tab's content
         $("#includedContent").css("display", "block");
     });
 
     $("#currentEvents").click(() => {
+        // Change Event Monitoring tab's background color
         $("#currentEvents").css("background-color", "palevioletred");
+        // Reset Dashboard tab's background color
         $("#chart").css("background-color", "");
+        // Hide the Dashboard tab's content
         $("#includedContent").css("display", "none");
+        // Display the Event Monitoring tab's content
         $(".eventMonitoring").css("display", "block");
     });
 });
@@ -31,7 +44,7 @@ $(() => {
  * page is initially loaded or refreshed
  */
 $.getJSON("/notifications", {limit: CONFIG.NoOfNotificationsToDisplay }, function (results) {
-    console.log("config.NoOfNotificationsToDisplay in index ", CONFIG.NoOfNotificationsToDisplay);
+    // Create a event log for each notification
     results.forEach((element) =>
                     displayEventMessage(element));
 });
@@ -40,7 +53,8 @@ $.getJSON("/notifications", {limit: CONFIG.NoOfNotificationsToDisplay }, functio
  * Socket listens for new event that is emitted in the server side.
  * Calls onNewEvent method when a new event occurs and updates the graph
  */
-socket.on("new event", (body) => {
+socket.on("newNotification", (body) => {
+    console.log("in socket - index.js");
     onNewEvent(body);
     plotAllGraphs();
 });
@@ -73,9 +87,10 @@ function onNewEvent(body) {
  * Appends this message to an UI element adds animation to it
  * @param {*} eventDetails
  */
-async function displayEventMessage(eventDetails) {
+function displayEventMessage(eventDetails) {
     var eventDate = formatEventDate(eventDetails.eventDate);
     var mainPanel = document.getElementById("panelCurrentEvent");
+    // Checks the limit to display number of recent events
     if(mainPanel.childElementCount >= CONFIG.NoOfNotificationsToDisplay) {
         mainPanel.removeChild(mainPanel.lastChild);
     }

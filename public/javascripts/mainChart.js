@@ -1,28 +1,38 @@
 "use strict";
+var chartColorIndex = 0, chartConfig;
+
 plotAllGraphs();
+
+/**
+ * Calls the plotGraph() function with different chart types and DOM id for chart's location
+ */
 function plotAllGraphs() {
+    console.log("in ploatallgraphs func - mainchart.js");
     plotGraph("Payment", "chart1");
     plotGraph("Refund", "chart2");
     plotGraph("Customer", "chart3");
     plotGraph("Fraud", "chart4");
 }
-var chartColorIndex = 0, chartConfig;
 
+/**
+ * Make "/charts" call and get graph data 
+ * @param {string} eventCategory 
+ * @param {string} chartId 
+ */
 function plotGraph(eventCategory, chartId) {
-    var graph = {
-        name: eventCategory
-    };
-    $.getJSON('/charts', graph, function (results) {
+    $.getJSON('/charts', { name: eventCategory }, function (results) {
+        console.log("in /charts - maincharts.js");
         console.log("results in graph", (results));
         if(Object.keys(results)) {
             chartConfig = {
                 type: 'line',
                 data: {
+                    // Extract the labels from results object
                     labels: (function() { 
-                        console.log("labels", (Object.keys(results)));
                         return Object.keys(results);
                     }()),
 
+                    // Extract the dataset from results object
                     datasets: (function() {
                                 var datasetList = [];
                                 var eventDataMap = {};
@@ -50,13 +60,13 @@ function plotGraph(eventCategory, chartId) {
                                         backgroundColor: newColor,
                                     });
                                 }
-                                console.log("datasetList in graph", (datasetList[0]));
                                 return datasetList;
                             } ())
                 },
                 options: {
                     tooltips: {
                         callbacks: {
+                            // Change the tooltip display format
                             label: function(tooltipItem, data) {
                                 var label = (data.datasets[tooltipItem.datasetIndex].label).split("=")[0] || '';
                                 var labelValue = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index] || 0;
@@ -89,15 +99,14 @@ function plotGraph(eventCategory, chartId) {
                                 fontSize: 14
                             },
                             ticks : {
+                                // Graph's Y-axis must start with zero
                                 min : 0,
+                                // Converts the Y-axis scale values to int if they are float.
                                 userCallback: function(label) {
-                                    // when the floored value is the same as the value we have a whole number
                                     if (Math.floor(label) === label) {
                                         return label;
                                     }
                                 }
-                                // suggestedMax: 1000,
-                                // stepSize: 100,
                             }
                         }]
                     },
@@ -110,7 +119,7 @@ function plotGraph(eventCategory, chartId) {
                     responsiveAnimationDuration: 0
                 },
                 plugins: [
-                    {
+                    {   // Change the way labels are displayed
                         beforeInit: function(chartConfig) {
                             chartConfig.data.datasets.forEach((dataset) => {
                                 var eventTotal = dataset.data.reduce((a,b) => a + b, 0);
@@ -120,6 +129,7 @@ function plotGraph(eventCategory, chartId) {
                     }
                 ]
             }
+            // Draw the chart with above data
             new Chart(document.getElementById(chartId).getContext("2d"), chartConfig);
         }
     });
