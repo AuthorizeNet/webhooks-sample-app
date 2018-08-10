@@ -7,7 +7,7 @@ plotAllGraphs();
  * Calls the plotGraph() function with different chart types and DOM id for chart's location
  */
 function plotAllGraphs() {
-    console.log("in ploatallgraphs func - mainchart.js");
+    // console.log("in ploatallgraphs func - mainchart.js");
     plotGraph("Payment", "chart1");
     plotGraph("Refund", "chart2");
     plotGraph("Customer", "chart3");
@@ -20,9 +20,8 @@ function plotAllGraphs() {
  * @param {string} chartId 
  */
 function plotGraph(eventCategory, chartId) {
-    $.getJSON('/charts', { name: eventCategory }, function (results) {
-        console.log("in /charts - maincharts.js");
-        console.log("results in graph", (results));
+    $.getJSON('/charts', { name: eventCategory }, function (resultsMap) {
+        var results = resultsMap.data;
         if(Object.keys(results)) {
             chartConfig = {
                 type: 'line',
@@ -37,7 +36,7 @@ function plotGraph(eventCategory, chartId) {
                                 var datasetList = [];
                                 var eventDataMap = {};
                                 var nameList = Object.keys(results[Object.keys(results)[0]]);
-                                console.log("nameList in graph", (nameList));
+                                // console.log("nameList in graph", (nameList));
 
                                 nameList.forEach((name) => {
                                     eventDataMap[name] = [];
@@ -70,6 +69,9 @@ function plotGraph(eventCategory, chartId) {
                             label: function(tooltipItem, data) {
                                 var label = (data.datasets[tooltipItem.datasetIndex].label).split("=")[0] || '';
                                 var labelValue = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index] || 0;
+                                if(resultsMap.yaxis === "Amount") {
+                                    return label + ": " + labelValue + " $";
+                                }
                                 return label + ": " + labelValue;
                             }
                         }
@@ -94,7 +96,7 @@ function plotGraph(eventCategory, chartId) {
                         yAxes : [{
                             scaleLabel: {
                                 display: true,
-                                labelString: 'Total',
+                                labelString: resultsMap.yaxis,
                                 fontStyle: "bold",
                                 fontSize: 14
                             },
@@ -123,7 +125,10 @@ function plotGraph(eventCategory, chartId) {
                         beforeInit: function(chartConfig) {
                             chartConfig.data.datasets.forEach((dataset) => {
                                 var eventTotal = dataset.data.reduce((a,b) => a + b, 0);
-                                dataset.label = dataset.label +  " = "+ eventTotal;
+                                dataset.label = dataset.label + " = " + eventTotal;
+                                if(resultsMap.yaxis === "Amount") {
+                                    dataset.label += " $";
+                                }
                             });
                         },
                     }

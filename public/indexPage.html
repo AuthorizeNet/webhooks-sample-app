@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="./images/favicon1.ico" type="image/x-icon">
+        <link rel="stylesheet" href="./stylesheets/lib/bootstrap.min.css">
+        <script src="./javascripts/lib/jquery-3.3.1.min.js"></script>
+        <script src="./javascripts/lib/popper.min.js"></script>
+        <script src="./javascripts/lib/bootstrap.min.js"></script>
+        <script src="../socket.io/socket.io.js"></script>
+        <script src="./javascripts/lib/Chart.min.js"></script>
+    </head>
+    <body>
+        <div class="jumbotron container-fluid" style="padding-bottom: 0;padding-top: 0">
+                <h3 style="text-align:center">Webhook Manager</h3>
+                <div class="btn-group btn-group-justified">
+                    <div class="btn-group">
+                        <button type="button" id="currentEvents" class="btn btn-primary">Live Event Monitoring</button>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" id="chart" class="btn btn-primary">Dashboard</button>    
+                    </div>
+                </div>    
+    
+        </div>
+    
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+        <div class="eventMonitoring">
+                <canvas id="chartBox" width="200px" height="50px"></canvas>
+                <hr>
+        </div>
+
+        <div class="row eventMonitoring" style="width: 100%; margin: 0 auto; text-align: left;" >
+            <div class="col-md-12" id="logCount"></div>
+        </div>
+
+        <div class="row eventMonitoring" style="width: 100%; margin: 0 auto; text-align: left;">
+            <div class="col-md-8">
+                    <table class="table eventMonitoringHeading">
+                        <thead>
+                            <tr class="success">
+                                <th class="col-md-2">Timestamp</th>
+                                <th class="col-md-5" style="margin: 0 auto; text-align: center">Event Type</th>
+                                <th class="col-md-5" style="margin: 0 auto; text-align: center">Payload</th>
+                            </tr>
+                        </thead>
+                    </table>
+            </div>
+
+            <div class="col-md-4">
+                <div class="dropdown">
+                    <button class="btn bbtn-secondary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        All
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-left" role="menu" aria-labelledby="dropdownMenu1">
+                        <li><a data-value="all">All</a></li>
+                    </ul>
+                </div>
+                <div class="error-message" ></div>
+            </div>
+
+        </div>
+
+        <div class="row eventMonitoring" style="width: 100%; margin: 0 auto; text-align: center">
+                <div class="col-md-8" id="currentEventList">
+                    <div class="panel-group" id="panelCurrentEvent"></div>
+                </div>
+                <div class="col-md-4" style="display: none"></div>
+        </div>
+        
+        <div id="includedContent" style="display: none;"></div>
+        
+        <script src="./javascripts/index.js"></script>
+        <script src="./javascripts/chart.js"></script>
+
+    </body>
+</html>

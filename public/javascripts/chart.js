@@ -28,21 +28,50 @@ var config,
     myLine,
     colorNames = Object.keys(chartColors);
 
-// For live event chart. Query parameter name is passed with value "all".
-$.getJSON('/charts', {name: "all"}, function (results) {
-    // console.log("eventFrequencyAtEachTimeMap in chart page looks like: ", (results.eventFrequencyAtEachTimeMap));
+var initialChartData;
 
-    // if (! (Object.keys(results.eventFrequencyAtEachTimeMap) === undefined || Object.keys(results.eventFrequencyAtEachTimeMap).length === 0)) {
+/**
+ * Initialize chart data and draws chart if the chart data is populated
+ * @param {*} chartResults 
+ */
+function initialChartCallback(chartResults) {
+    console.log("innside callback of initialize chart func")
+    initialChartData = chartResults;
+    console.log("initialChartData ", initialChartData);
+    if(Object.keys(initialChartData.eventFrequencyAtEachTimeMap).length!= 0) {
+        console.log("before calling drawchart in callback of initialize chart func")
+        drawChart(initialChartData);
+    }
+}
+initializeChart();
+
+/**
+ * Gets chart values from "/charts" endpoint.
+ * calls initialChartCallback() with chart data
+ */
+function initializeChart() {
+    console.log("in initialize chart func");
+
+    // For live event chart. Query parameter name is passed with value "all"
+    $.getJSON('/charts', { name: "all", csrf: $('input[name="_csrf"]').val() }, (results) => { initialChartCallback(results) });
+}
+
+/**
+ * Initializes chart configurations. Plots chart and calls function to
+ * update chart regularly
+ * @param {*} results 
+ */
+function drawChart(results) {
+    try{
         config = {
             type: "line",
             data: {
                 // Extract the labels from results object
                 labels: (function() {
                             var timeLabelList = [];
-                            // Cannot read property 'length' of undefined
                             for(var i=0; i<Object.values(results.eventFrequencyAtEachTimeMap)[0].length; ++i)
                                 timeLabelList.push(new Date(new Date(results.graphStartTime).getTime() + (i * 1000 * results.intervalTimeSeconds)).toISOString());
-
+                            
                             return timeLabelList;
                         }()),
 
@@ -58,31 +87,31 @@ $.getJSON('/charts', {name: "all"}, function (results) {
                                     label: nameList[i],
                                     data: dataList[i],
                                     borderColor: newColor,
-                                    backgroundColor: newColor,
+                                    backgroundColor: newColor
                                 });
                             }
                             return datasetList;
-                        } ())
+                        }())
             },
             options: {
-                title: {
-                    display: true,
-                    text: "Event Tracker",
-                    fontSize: 20
-                },
+                // title: {
+                //     display: true,
+                //     text: "Event Tracker",
+                //     fontSize: 20
+                // },
                 legend:{
-                    position: "bottom",
+                    position: "right",
                 },
                 scales: {
                 xAxes: [{
                     scaleLabel: {
                         display: true,
-                        labelString: "Time",
+                        labelString: "Time (UTC)",
                         fontStyle: "bold",
                         fontSize: 16
                     },
                     ticks: {
-                        // Display only time in X axis
+                        // Extract Time portion of Date and display in X axis
                         callback: function(value) {
                                     var formattedTime = new Date(value).toISOString().split("T");
                                     formattedTime[1]= formattedTime[1].split(".")[0];
@@ -95,7 +124,8 @@ $.getJSON('/charts', {name: "all"}, function (results) {
                         display: true,
                         labelString: "# of Events",
                         fontStyle: "bold",
-                        fontSize: 14
+                        fontSize: 14,
+                        // stacked:true
                     },
                     ticks : {
                         min : 0,
@@ -114,7 +144,7 @@ $.getJSON('/charts', {name: "all"}, function (results) {
             },
             plugins: [
             {
-                // Before Updating chart, find event count and display in its label
+                // Before Updating chart, find event count and add to its label
                 beforeUpdate: function(config) {
                     config.data.datasets.forEach((dataset) => {
                         var eventCount = dataset.data.reduce((a,b) => a + b, 0);
@@ -139,8 +169,10 @@ $.getJSON('/charts', {name: "all"}, function (results) {
             }
         ]
         };
-    // }
-    
+    }catch(err) {
+        console.error("Error in chart.js ", err);
+    }
+
     // Plot the chart
     $(document).ready(function() {
         var ctx = document.getElementById("chartBox").getContext("2d");
@@ -149,61 +181,64 @@ $.getJSON('/charts', {name: "all"}, function (results) {
 
     // Execute the setInterval's callback function repeatedly
     var stopGraphUpdate = setInterval(function () {
-        // console.log("\n in set interval\n");
+        console.log("\n in set interval\n");
         updateLiveEventGraph(results.intervalTimeSeconds, eventFrequencyInGraphInterval);
         eventFrequencyInGraphInterval = {};
-    }, 7000);
-});
+    }, results.intervalTimeSeconds * 1000);// set to results.intervalTimeSeconds
+}
 
 /**
- * During each call, updates the X-axis, adds new event if occured,
- * updates existing event whether occured in this time interval or not 
+ * During each call, updates the X-axis, adds new event if occurred,
+ * updates existing event whether occurred in this time interval or not 
  * @param {number} intervalTimeSeconds 
  * @param {*} eventFrequencyInGraphInterval 
  */
 function updateLiveEventGraph(intervalTimeSeconds, eventFrequencyInGraphInterval) {
-    // console.log("\n eventFrequencyInGraphInterval is \n", eventFrequencyInGraphInterval);
     if(config.data.datasets) {
         updateXAxis(intervalTimeSeconds);
     }
     
-    // if (! (Object.keys(eventFrequencyInGraphInterval) === undefined || Object.keys(eventFrequencyInGraphInterval).length === 0)) {
-        config.data.datasets.forEach((dataset, index, datasetsList)=> {
-            var updatedFrequencyFlag = false;
-            Object.keys(eventFrequencyInGraphInterval).forEach(function(newEvent) {
-                // If already present event has occured in this timeframe,
-                // update with new count
-                if(newEvent === dataset.label) {
-                    addData(dataset.label, eventFrequencyInGraphInterval[newEvent]);
-                    updatedFrequencyFlag = true;
-                }
-            });
-            // If already present event does not occur in the time frame, add "0" as count
-            if(!updatedFrequencyFlag) {
-                addData(dataset.label, 0);
+    config.data.datasets.forEach((dataset)=> {
+        var updatedFrequencyFlag = false;
+        Object.keys(eventFrequencyInGraphInterval).forEach(function(newEvent) {
+            
+            // If already present event has occurred in this timeframe,
+            // update with new count
+            if(newEvent === dataset.label) {
+                // console.log("If already present event has occurred in this timeframe, update with new count")
+                addData(dataset.label, eventFrequencyInGraphInterval[newEvent]);
+                updatedFrequencyFlag = true;
             }
         });
 
-        Object.keys(eventFrequencyInGraphInterval).forEach(function(newEvent) {
-            var updatedFrequency1Flag = false;
-            config.data.datasets.forEach(function(dataset, index, chartSeriesList) {
-                if(newEvent === dataset.label) {
-                    updatedFrequency1Flag = true;
-                }
-            });
-            // If new event has occured, add a dataset for it and update its latest count
-            if(!updatedFrequency1Flag) {
-                addDataset(newEvent);
-                addData(newEvent, eventFrequencyInGraphInterval[newEvent]);
+        // If already present event does not occur in the time frame, add "0" as count
+        if(!updatedFrequencyFlag) {
+            // console.log("If already present event does not occur in the time frame, add 0 as count")
+            addData(dataset.label, 0);
+        }
+    });
+
+    Object.keys(eventFrequencyInGraphInterval).forEach(function(newEvent) {
+        var updatedFrequency1Flag = false;
+        config.data.datasets.forEach(function(dataset) {
+            if(newEvent === dataset.label) {
+                updatedFrequency1Flag = true;
             }
         });
-    // }
+
+        // If new event has occurred, add a dataset for it and update its latest count
+        if(!updatedFrequency1Flag) {
+            // console.log("If new event has occurred, add a dataset for it and update its latest count")
+            addDataset(newEvent);
+            addData(newEvent, eventFrequencyInGraphInterval[newEvent]);
+        }
+    });
     // Update the graph after making necessary changes
     myLine.update();
 }
 
 /**
- * Add a dataset for newly occured event
+ * Add a dataset for newly occurred event
  * @param {*} newEvent 
  */
 function addDataset(newEvent) {
@@ -221,7 +256,6 @@ function addDataset(newEvent) {
     for (var index = 0; index < config.data.labels.length; ++index)
         newDataset.data.push(0);
     
-    // Add it to current dataset
     config.data.datasets.push(newDataset);
 }
 
@@ -233,11 +267,10 @@ function addDataset(newEvent) {
 function addData(datasetName, value) {
     // console.log("addData for event ", datasetName);
     if (config.data.datasets.length > 0 && datasetName!= undefined) {
-        config.data.datasets.forEach(function(dataset) {
+        config.data.datasets.forEach(function(dataset, index, chartSeriesList) {
             if(dataset.label === datasetName) {
-                dataset.data.push(value);
-                dataset.data.shift();
-                // console.log("value after addData ", dataset.data);
+                chartSeriesList[index].data.push(value);
+                chartSeriesList[index].data.shift();
             }
         });
     }
@@ -248,12 +281,11 @@ function addData(datasetName, value) {
  * @param {number} intervalTimeSeconds 
  */
 function updateXAxis(intervalTimeSeconds) {
+    console.log("\n inupdateXAxis func\n");
     var latestTime = config.data.labels[config.data.labels.length-1];
     var nextTime = new Date(new Date(latestTime).getTime() + (1000 * intervalTimeSeconds)).toISOString();
-    // console.log("latestTime ", latestTime, " nextTime ", nextTime);
     config.data.labels.push(nextTime);
     config.data.labels.shift();
-    // console.log("next timelist is ", config.data.labels);
 }
 
 /**
@@ -261,8 +293,13 @@ function updateXAxis(intervalTimeSeconds) {
  * @param {string} eventType 
  */
 function findEventFrequencyInGraphInterval(eventType) {
-    if(eventType in eventFrequencyInGraphInterval)
-        eventFrequencyInGraphInterval[eventType] += 1;
-    else
+    if(Object.keys(initialChartData.eventFrequencyAtEachTimeMap).length== 0) {
+        initializeChart();
+	}
+	else {
+		if(eventType in eventFrequencyInGraphInterval)
+			eventFrequencyInGraphInterval[eventType] += 1;
+		else
         eventFrequencyInGraphInterval[eventType] = 1;
+	}
 }

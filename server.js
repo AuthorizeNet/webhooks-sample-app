@@ -7,21 +7,132 @@ const http = require("http");
 const socketIo = require("socket.io");
 const server = http.Server(app);
 const io = socketIo(server);
-const config = require("./config/config");
+const config = require("./config/config.js");
 const loki = require("lokijs");
+const request = require("request");
+const csurf = require('csurf');
+const cookieParser = require('cookie-parser');
+var csp = require('helmet-csp')
 
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
+
+app.use(csp({
+  // Specify directives as normal.
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    fontSrc:["'self'"],
+    imgSrc: ["'self'"],
+    reportUri: '/report-violation',
+    objectSrc: ["'none'"],
+    connectSrc: ["'self'", "ws://localhost:" + config.app.port],
+    // upgradeInsecureRequests: true,
+    workerSrc: false  // This is not set.
+  },
+ 
+  // This module will detect common mistakes in your directives and throw errors
+  // if it finds any. To disable this, enable "loose mode".
+  loose: true,
+ 
+  // Set to true if you only want browsers to report errors, not block them.
+  reportOnly: false,
+ 
+  // Set to true if you want to blindly set all headers: Content-Security-Policy,
+  // X-WebKit-CSP, and X-Content-Security-Policy.
+  setAllHeaders: false,
+ 
+  // Set to true if you want to disable CSP on Android where it can be buggy.
+  disableAndroid: true,
+ 
+  // Set to false if you want to completely disable any user-agent sniffing.
+  // This may make the headers less compatible but it will be much faster.
+  // This defaults to `true`.
+  browserSniff: false
+}))
+
+// Storing values from config file
 var noOfDaysGraph = config.graph.noOfDays;
 var dbSize = config.db.size;
+
+// DB initialization
 var db = new loki(config.db.name, {
   autoload: true,
   autoloadCallback: databaseInitialize,
   autosave: true,
   autosaveInterval: 4000
 });
+
+// Pass initial chart parameter.
+io.on('connection', function(){
+    io.emit("init", {
+        'noOfDaysGraph': config.graph.maxNotificationCount,
+    });
+});
+
+/**
+ * Handles POST message to "/notifications" endpoint. Updates notifications set, inserts
+ * new notification, emit a new event to be captured by front end code
+ */
+app.post("/notifications", async function (req, res) {
+    try {
+        io.emit("newNotification", {
+            eventDetails: (req.body),
+        });
+        var notifications = await updateNotifications();
+
+        notifications = await insertNewNotification(notifications, req.body);
+        
+        res.sendStatus(201);
+    }catch(err) {
+        console.error("Error happened in posting notifications ", err);
+        res.sendStatus(500);
+    }
+});
+
+// Handles the CSP report violation
+app.post('/report-violation', function (req, res) {
+    if (req.body) {
+      console.log('CSP Violation: ', req.body)
+    } else {
+      console.log('CSP Violation: No data received!')
+    }
+    res.status(204).end()
+});
+
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// To render html file
+app.set('views', path.join(__dirname, 'public'));
+app.engine('.html', require('ejs').renderFile);
+
+// Required for CSRF
+app.use(cookieParser());
+
+// For protection from CSRF
+const csrfProtection = csurf({ cookie: true });
+app.use(csrfProtection);
+
+// Handles the homepage url
+app.get('/', csrfProtection, function(req, res) {
+    res.render('indexPage.html', {csrfToken: req.csrfToken()});
+});
+
+// To generate authorization header
+const encodedString = Buffer.from(config.apiLoginId + ":" +
+                                config.transactionKey).toString("base64");
+
+const headers = { "content-type": "application/json",
+                "Authorization": "Basic " + encodedString };
+
+// Request body to get event types
+const eventRequestData = {
+    url: config.apiEndpoint + "/eventtypes",
+    method: "GET",
+    headers: headers
+};
 
 /**
  * Initialize the collection
@@ -30,13 +141,6 @@ function databaseInitialize() {
     if (!db.getCollection("notifications")) {
         db.addCollection("notifications");
     }
-
-    if (!db.getCollection("testnotifications")) {
-        db.addCollection("testnotifications");
-    }
-
-    // console.log("available testnotif are :\n", db.getCollection("testnotifications").find())
-    // db.getCollection("testnotifications").chain().remove();
 }
 
 /**
@@ -57,12 +161,24 @@ function calculateLastXDays(x) {
 
 /**
  * Filter based on event list from DB
- * @param {*} testnotifications 
+ * @param {*} notifications 
  * @param {Array} eventFilter 
  */
-async function getMatchingEventsFromDB(testnotifications, eventFilter) {
-    return testnotifications.find({eventType: { $in: eventFilter } });
-} 
+async function getMatchingEventsFromDB(notifications, eventFilter, offsetValue, limitValue) {
+
+    if(offsetValue === -1 && limitValue === -1) {
+        return notifications.chain().find({eventType: { $in: eventFilter } }).data({removeMeta: true});
+    }
+    else {
+        if(eventFilter.length!= 0) {
+            return notifications.chain().find({eventType: { $in: eventFilter } }).offset(offsetValue).limit(limitValue).data({removeMeta: true});
+        }
+
+        else {
+            return notifications.chain().offset(offsetValue).limit(limitValue).data({removeMeta: true});
+        }
+    }
+}
 
 /**
  * Calculates the date range and values to plot in chart based on input parameters
@@ -72,10 +188,10 @@ async function getMatchingEventsFromDB(testnotifications, eventFilter) {
  */
 async function getGraphData(eventFilter, eventKeyList, calculateParameter) {
     var recentDateMap = calculateLastXDays(noOfDaysGraph);
-    
-    var testnotifications = await getCollectionFunction("testnotifications");
 
-    var recentDocs = await getMatchingEventsFromDB(testnotifications, eventFilter);
+    var notifications = await getCollectionFunction("notifications");
+
+    var recentDocs = await getMatchingEventsFromDB(notifications, eventFilter, -1, -1);
 
     // If recentDocs is null, the charts are displayed with all values as zero
     // for each date in recentDateMap
@@ -87,7 +203,6 @@ async function getGraphData(eventFilter, eventKeyList, calculateParameter) {
         });
     }
 
-    console.log("recentDocs ", recentDocs.length);
     recentDocs.forEach( (element) => {
         var tempDate = element.eventDate.slice(0, 10).split('-');   
         var elementDate = tempDate[1] +'-'+ tempDate[2] +'-'+ tempDate[0];
@@ -95,10 +210,10 @@ async function getGraphData(eventFilter, eventKeyList, calculateParameter) {
         if(elementDate in recentDateMap) {
             Object.keys(recentDateMap[elementDate]).forEach((eventLegend) => {
                 if(eventKeyList.includes(eventLegend)) {
-                    if(calculateParameter === "amount") {
+                    if(calculateParameter === "Amount") {
                         recentDateMap[elementDate][eventLegend] += parseInt(element.payload.authAmount);
                     }
-                    else if(calculateParameter === "count") {
+                    else if(calculateParameter === "Count") {
                         recentDateMap[elementDate][eventLegend] += 1;
                     }
                 }
@@ -109,7 +224,11 @@ async function getGraphData(eventFilter, eventKeyList, calculateParameter) {
         }
 
     });
-    return recentDateMap;
+    var chartMap = {
+        "data": recentDateMap,
+        "yaxis": calculateParameter
+    };
+    return chartMap;
 }
 
 /**
@@ -127,7 +246,7 @@ async function setGraphCriteria(eventCategory) {
                 ];
                 // eventKeyList = ["Total Amount", "second dataset"];
                 eventKeyList = ["Total Payment Amount"];
-                calculateParameter = "amount";
+                calculateParameter = "Amount";
                 break;
         
         case "Refund":
@@ -136,7 +255,7 @@ async function setGraphCriteria(eventCategory) {
                     "net.authorize.payment.void.created"
                 ];
                 eventKeyList = ["Total Refund Amount"];
-                calculateParameter = "amount";
+                calculateParameter = "Amount";
                 break;
         
         case "Customer":
@@ -144,7 +263,7 @@ async function setGraphCriteria(eventCategory) {
                     "net.authorize.customer.created"
                 ];
                 eventKeyList = ["# of Customer Profile created"];
-                calculateParameter = "count";
+                calculateParameter = "Count";
                 break;
         
         case "Fraud":
@@ -152,7 +271,7 @@ async function setGraphCriteria(eventCategory) {
                     "net.authorize.payment.fraud.held"
                 ];
                 eventKeyList = ["# of Fraud transactions held"];
-                calculateParameter = "count";
+                calculateParameter = "Count";
                 break;
     }
 
@@ -162,34 +281,34 @@ async function setGraphCriteria(eventCategory) {
 
 /**
  * Returns the oldest notification present
- * @param {*} testnotifications 
+ * @param {*} notifications 
  */
-async function getOldestNotification(testnotifications) {
-    return testnotifications.chain().limit(1).data();
+async function getOldestNotification(notifications) {
+    return notifications.chain().limit(1).data();
 }
 
 /**
  * Removes the oldest notification from available set of notifications
- * @param {*} testnotifications 
+ * @param {*} notifications 
  * @param {*} oldestNotification 
  */
-async function removeOldestNotification(testnotifications, oldestNotification) {
-    testnotifications.remove(oldestNotification);
-    return testnotifications;
+async function removeOldestNotification(notifications, oldestNotification) {
+    notifications.remove(oldestNotification);
+    return notifications;
 }
 
 /**
  * Retrieves and Deletes the oldest notification present in the set of notifications
- * @param {*} testnotifications 
+ * @param {*} notifications 
  */
-async function handleOldestNotification(testnotifications) {
-    if (testnotifications.count() >= dbSize) {
-        var oldestNotification = await getOldestNotification(testnotifications);
-        testnotifications = await removeOldestNotification(testnotifications,oldestNotification);
-        return testnotifications;
+async function handleOldestNotification(notifications) {
+    if (notifications.count() >= dbSize) {
+        var oldestNotification = await getOldestNotification(notifications);
+        notifications = await removeOldestNotification(notifications,oldestNotification);
+        return notifications;
     }
     else {
-        return testnotifications;
+        return notifications;
     }
 }
 
@@ -197,55 +316,32 @@ async function handleOldestNotification(testnotifications) {
  * Initializes current set of notifications and removes the oldest one from it
  */
 async function updateNotifications() {
-    var testnotifications = await getCollectionFunction("testnotifications");
-    testnotifications = await handleOldestNotification(testnotifications);
+    var notifications = await getCollectionFunction("notifications");
+    
+    notifications = await handleOldestNotification(notifications);
 
-    console.log("testnotifications.count after removing ", testnotifications.count());
-    return testnotifications;
+    return notifications;
 }
 
 /**
  * Insert incoming new notification into available notifications set and returns the new set
- * @param {*} testnotifications 
+ * @param {*} notifications 
  * @param {*} newNotification 
  */
-async function insertNewNotification(testnotifications, newNotification) {
-    testnotifications.insert(newNotification);
-    return testnotifications;
+async function insertNewNotification(notifications, newNotification) {
+    notifications.insert(newNotification);
+    return notifications;
 }
-
-/**
- * Handles POST message to "/notifications" endpoint. Updates notifications set, inserts
- * new notification, emit a new event to be captured by front end code
- */
-app.post("/notifications", async function (req, res) {
-    try {
-        var testnotifications = await updateNotifications();
-
-        testnotifications = await insertNewNotification(testnotifications, req.body);
-        
-        console.log("testnotifications.count after inserting new notification", testnotifications.count());
-        
-        io.emit("newNotification", {
-            eventDetails: (req.body),
-        });
-
-        res.sendStatus(201);
-    }catch(err) {
-        console.error("Error happened in posting notifications ", err);
-        res.sendStatus(500);
-    }
-});
 
 /**
  * Finds the time values to be plotted in live event chart and returns as an Array
  * @param {Date} startTime 
  */
 function calculateEventGraphInterval(startTime) {
-    console.log("start time: ", startTime);
+    // console.log("start time: ", startTime);
     var newTime = new Date(startTime.getTime() + (1000 * config.graph.intervalTimeSeconds));
     var graphTimeList = [], currentTime = new Date(), tempDate;
-    console.log("currentTime", currentTime);
+    // console.log("currentTime", currentTime);
     tempDate = startTime.toISOString().slice(0, 24);
     graphTimeList.push(startTime);
 
@@ -276,7 +372,7 @@ function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
         graphEvents.forEach(function(event) {
             var timeDiff = Math.abs(new Date(event.eventDate).getTime() - new Date(graphTimeList[0]).getTime());
             var index = Math.ceil(timeDiff/ (config.graph.intervalTimeSeconds * 1000));
-            
+
             if (eventFrequencyAtEachTimeMap[event.eventType] === undefined || eventFrequencyAtEachTimeMap[event.eventType].length == 0) {
                 eventFrequencyAtEachTimeMap[event.eventType] = new Array(config.graph.graphTimeScale).fill(0);
                 eventFrequencyAtEachTimeMap[event.eventType][index-1] = 1;
@@ -294,11 +390,11 @@ function findEventsFrequencyInGraphInterval(graphTimeList, graphEvents) {
 
 /**
  * Returns the notifications occurred after the graph start time
- * @param {*} testnotifications 
+ * @param {*} notifications 
  * @param {Date} graphStartTime 
  */
-async function filterToGetGraphEvents(testnotifications, graphStartTime) {
-    return testnotifications.chain().where(function(obj) {
+async function filterToGetGraphEvents(notifications, graphStartTime) {
+    return notifications.chain().where(function(obj) {
         return  graphStartTime < new Date(obj.eventDate)}).data({removeMeta: true});
 } 
 
@@ -312,12 +408,12 @@ async function getAllEventsChart() {
     
         var graphTimeList = calculateEventGraphInterval(calculateFromTime);
         try {
-            var testnotifications = await getCollectionFunction("testnotifications");
-
-            var graphEvents = await filterToGetGraphEvents(testnotifications, graphStartTime);
-
+            var notifications = await getCollectionFunction("notifications");
+            
+            var graphEvents = await filterToGetGraphEvents(notifications, graphStartTime);
+            
             var eventFrequencyAtEachTimeMap = findEventsFrequencyInGraphInterval(graphTimeList, graphEvents);
-
+            
             return {
                 eventFrequencyAtEachTimeMap: eventFrequencyAtEachTimeMap,
                 graphStartTime: graphTimeList[1],
@@ -330,25 +426,45 @@ async function getAllEventsChart() {
 }
 
 /**
+ * Returns the count of collection
+ * @param {string} collectionName 
+ */
+async function findCollectionsCount(collectionName) {
+    return collectionName.count()
+}
+
+/**
  * Returns recent notifications by filtering from available set
- * @param {*} testnotifications 
+ * @param {*} notifications 
  * @param {*} limit 
  */
-async function filterToGetRecentNotifications(testnotifications, limit) {
-    var recentNotifications;
-    if (testnotifications.count() > limit) {
-        var maxId = testnotifications.maxId;
-        var recentNotifications = testnotifications
-                                .chain()
-                                .find({ $loki: { $between: [maxId - limit + 1, maxId] } })
-                                .data({removeMeta: true});
+async function filterToGetRecentNotifications(notifications, limit, eventType) {
+
+    var collectionCount = await findCollectionsCount(notifications);
+
+    var offset = 0, eventFilter = [], limitValue = limit; 
+    if(eventType === "all") {        
+        if(collectionCount > limitValue) {
+            offset = collectionCount - limitValue;
+        }
+        else {
+            limitValue = collectionCount;
+        }
     }
-    // If requesting count of notifications is more than number of notifications
-    // present in database, return all available notifications in database
-    else
-        var recentNotifications = testnotifications
-                                .chain()
-                                .data({removeMeta: true});
+
+    else {
+        limitValue = collectionCount;
+        eventFilter = [eventType];
+    }
+
+    var recentNotifications = await getMatchingEventsFromDB(notifications, eventFilter, offset, limitValue);
+
+    if(eventType!= "all") {
+        if(recentNotifications.length > limit) {
+            recentNotifications.splice(0, recentNotifications.length - limit);
+        }
+    }
+    
     return recentNotifications;
 }
 
@@ -356,13 +472,14 @@ async function filterToGetRecentNotifications(testnotifications, limit) {
  * Calls filterToGetRecentNotifications() to get the required recent notifications and returns it
  * @param {number} limit 
  */
-async function getRecentNotifications(limit) {
+async function getRecentNotifications(limit, eventType) {
     try {
-        var testnotifications = await getCollectionFunction("testnotifications");
+        var notifications = await getCollectionFunction("notifications");
 
-        var recentNotifications = await filterToGetRecentNotifications(testnotifications, limit);
-    
+        var recentNotifications = await filterToGetRecentNotifications(notifications, limit, eventType);
+
         return recentNotifications;
+
     }catch(err) {
         console.error("Error happened in getting recent notifications ", err);
         return [];
@@ -372,10 +489,8 @@ async function getRecentNotifications(limit) {
 /**
  * Endpoint to return recent requested number of notifications
  */
-app.get("/notifications", async function(req, res) {
-     
-    var recentNotifications = await getRecentNotifications(req.query.limit);
-    console.log(recentNotifications);
+app.get("/notifications", csrfProtection, async function(req, res) {
+    var recentNotifications = await getRecentNotifications(req.query.limit, req.query.name);
     returnApiResponse(res, recentNotifications);
 });
 
@@ -400,18 +515,59 @@ function returnApiResponse(res, returnJsonValue) {
 /**
  * Endpoint to get all the charts data
  */
-app.get("/charts", async function (req, res) {
+app.get("/charts", csrfProtection, async function (req, res) {
     console.log("------------------------------------");
-    // console.log("request graph parameter in /notif is: ", req.graph);
     var returnValue;
-    if(req.query.name === "all"){
-        returnValue = await getAllEventsChart();
+    try{
+        if(req.query.name === "all"){
+            returnValue = await getAllEventsChart();
+        }
+        else
+            returnValue = await setGraphCriteria(req.query.name);
+
+    }catch(err) {
+        console.log("Error in GET /charts ", err)
     }
-    else
-        returnValue = await setGraphCriteria(req.query.name);
-    // console.log("return value in get notif", returnValue);
     returnApiResponse(res, returnValue);
 });
+
+/**
+ * 
+ * @param {Function} callback(eventTypes): called after the getting eventTypes
+ *  
+ */
+function getEvents(callback) {
+    request(eventRequestData, function (error, response, body) {
+        if(error) {
+            console.error("Error in request getevents ", error);
+            var errorMessage = {};
+            errorMessage.message = "Error in getting available EventTypes from ANET. Please try again";
+            callback(errorMessage)
+        }
+        else {
+            callback(JSON.parse(body))
+        }
+    });
+}
+
+/**
+ * Handles "/eventtypes" GET endpoint. Calls getEvents() to get available eventTypes.
+ * Sends the response with error message or eventTypes
+ */
+app.get('/eventtypes', csrfProtection, function (req, res) {
+    getEvents(function(allEventTypes) {
+        res.send(allEventTypes); 
+    });
+});
+
+// error handler
+app.use(function (err, req, res, next) {
+    if (err.code !== 'EBADCSRFTOKEN') return next(err)
+   
+    // handle CSRF token errors here
+    res.status(403);
+    res.send("CSRF token validation failed. Suspicious request!!");
+})
 
 /**
  * Handles invalid URL
@@ -423,6 +579,6 @@ app.use((req, res) => {
 /**
  * App listens on the configured port in config.js file
  */
-server.listen(config.app.port, config.app.host, function () {
+server.listen(config.app.port, function () {
     console.log("Application listening on port ", server.address().port);
 });
