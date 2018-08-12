@@ -12,7 +12,7 @@ $(document).on('click', '.dropdown-menu li a', function() {
     $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
     $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
     $("#panelCurrentEvent").html("");
-    
+
     // Socket listens during initialization and gets the chart values from server
     if(!maxNotificationCount) {
         socket.on("init", (body) => {
@@ -21,14 +21,15 @@ $(document).on('click', '.dropdown-menu li a', function() {
             filterNotificationLogByEventType($(this).data('value'));
         });
     }
-    else
+    else {
         filterNotificationLogByEventType($(this).data('value'));
+    }
 
 });
 
 /**
  * Makes API call and gets the notification log based on filtered eventType
- * @param {string} eventType 
+ * @param {string} eventType
  */
 function filterNotificationLogByEventType(eventType) {
     // console.log("eventtype selected in filterNotificationLogByEventType is ", eventType);
@@ -53,10 +54,8 @@ function filterNotificationLogByEventType(eventType) {
 $(() => {
     // Set the CSRF headers
     $.ajaxSetup({
-        headers: {
-            'x-csrf-token': $('input[name="_csrf"]').val()
-        },
-        data: { _csrf: $('input[name="_csrf"]').val() },
+        headers: { 'x-csrf-token': $('input[name="_csrf"]').val() },
+        data: { csrf: $('input[name="_csrf"]').val() }
     });
 
     // Get All eventTypes and construct the notification filtering dropdown menu
@@ -74,7 +73,7 @@ $(() => {
         else {
             data.forEach((eventName) => {
                 var div_data = `<li><a data-value="${eventName.name}">${eventName.name}</a></li>`;
-                $(div_data).appendTo('.dropdown-menu'); 
+                $(div_data).appendTo('.dropdown-menu');
             });
         }
 
@@ -82,8 +81,8 @@ $(() => {
         console.log("Error occured in ajax \"/events\" call ", err);
     });
 
-    // Load the mainChart.html file that contains placeholder 
-    // payment, refund, customer and fraud charts 
+    // Load the mainChart.html file that contains placeholder
+    // payment, refund, customer and fraud charts
     $.ajax({
         url: '../mainChart.html',
         dataType: 'html',
@@ -98,7 +97,7 @@ $(() => {
 
     // By default enable the Event Monitoring tab
     $("#currentEvents").css("background-color", "palevioletred");
-    
+
     $("#chart").click(() => {
         // Change Dashboard tab's background color
         $("#chart").css("background-color", "palevioletred");
@@ -173,7 +172,7 @@ function displayEventMessage(eventDetails) {
     }
     var newPanel = document.createElement("div");
     newPanel.classList.add("panel", "panel-success");
-    
+
     var formatedPayload = JSON.stringify(eventDetails, null,"\t")
                            .slice(1,-1);
 
@@ -182,9 +181,7 @@ function displayEventMessage(eventDetails) {
             <div class="col-md-2">${eventDate}</div>
             <div class="col-md-5" style="padding: 0px;text-align: center;word-break: break-all">${eventDetails.eventType}</div>
             <div class="col-md-5" style="padding: 0px;">
-                <pre style="background-color: palegoldenrod;padding: 0px;margin: 0px auto;height:100px">	
-                    ${formatedPayload}
-                </pre>
+                <pre style="background-color: palegoldenrod;padding: 0px;margin: 0px auto;height:100px">${formatedPayload}</pre>
             </div>
         </div>`;
 

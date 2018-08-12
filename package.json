@@ -1,28 +1,39 @@
 {
-  "name": "nodejsFiles",
+  "name": "webhooks-sample-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "Webhook Dashboard to monitor real time events and recent business happenings",
   "main": "server.js",
   "dependencies": {
     "body-parser": "^1.18.3",
-    "chart.js": "^2.7.2",
+    "cookie-parser": "^1.4.3",
+    "csurf": "^1.9.0",
+    "ejs": "^2.6.1",
     "express": "^4.16.3",
-    "highcharts": "^6.1.1",
+    "helmet-csp": "^2.7.1",
     "http": "0.0.0",
-    "https": "^1.0.0",
-    "jslint": "^0.12.0",
     "lokijs": "^1.5.5",
     "request": "^2.87.0",
     "socket.io": "^2.1.1"
   },
   "devDependencies": {
-    "nodemon": "^1.17.5"
+    "nodemon": "^1.17.5",
+    "jslint": "^0.12.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "start": "nodemon server"
   },
-  "keywords": [],
+  "keywords": [
+    "authorize.net",
+    "webhooks"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": {
+    "node": "^8.11.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AuthorizeNet/webhooks-sample-app.git"
+  }
 }

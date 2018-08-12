@@ -32,14 +32,14 @@ var initialChartData;
 
 /**
  * Initialize chart data and draws chart if the chart data is populated
- * @param {*} chartResults 
+ * @param {*} chartResults
  */
 function initialChartCallback(chartResults) {
-    console.log("innside callback of initialize chart func")
+    console.log("innside callback of initialize chart func");
     initialChartData = chartResults;
     console.log("initialChartData ", initialChartData);
     if(Object.keys(initialChartData.eventFrequencyAtEachTimeMap).length!= 0) {
-        console.log("before calling drawchart in callback of initialize chart func")
+        console.log("before calling drawchart in callback of initialize chart func");
         drawChart(initialChartData);
     }
 }
@@ -53,13 +53,13 @@ function initializeChart() {
     console.log("in initialize chart func");
 
     // For live event chart. Query parameter name is passed with value "all"
-    $.getJSON('/charts', { name: "all", csrf: $('input[name="_csrf"]').val() }, (results) => { initialChartCallback(results) });
+    $.getJSON('/charts', { name: "all", csrf: $('input[name="_csrf"]').val() }, (results) => { initialChartCallback(results); });
 }
 
 /**
  * Initializes chart configurations. Plots chart and calls function to
  * update chart regularly
- * @param {*} results 
+ * @param {*} results
  */
 function drawChart(results) {
     try{
@@ -71,7 +71,7 @@ function drawChart(results) {
                             var timeLabelList = [];
                             for(var i=0; i<Object.values(results.eventFrequencyAtEachTimeMap)[0].length; ++i)
                                 timeLabelList.push(new Date(new Date(results.graphStartTime).getTime() + (i * 1000 * results.intervalTimeSeconds)).toISOString());
-                            
+
                             return timeLabelList;
                         }()),
 
@@ -189,19 +189,19 @@ function drawChart(results) {
 
 /**
  * During each call, updates the X-axis, adds new event if occurred,
- * updates existing event whether occurred in this time interval or not 
- * @param {number} intervalTimeSeconds 
- * @param {*} eventFrequencyInGraphInterval 
+ * updates existing event whether occurred in this time interval or not
+ * @param {number} intervalTimeSeconds
+ * @param {*} eventFrequencyInGraphInterval
  */
 function updateLiveEventGraph(intervalTimeSeconds, eventFrequencyInGraphInterval) {
     if(config.data.datasets) {
         updateXAxis(intervalTimeSeconds);
     }
-    
+
     config.data.datasets.forEach((dataset)=> {
         var updatedFrequencyFlag = false;
         Object.keys(eventFrequencyInGraphInterval).forEach(function(newEvent) {
-            
+
             // If already present event has occurred in this timeframe,
             // update with new count
             if(newEvent === dataset.label) {
@@ -239,7 +239,7 @@ function updateLiveEventGraph(intervalTimeSeconds, eventFrequencyInGraphInterval
 
 /**
  * Add a dataset for newly occurred event
- * @param {*} newEvent 
+ * @param {*} newEvent
  */
 function addDataset(newEvent) {
     // console.log("new series adding for event ", newEvent);
@@ -255,14 +255,14 @@ function addDataset(newEvent) {
     // Make count as zero for each value in X axis
     for (var index = 0; index < config.data.labels.length; ++index)
         newDataset.data.push(0);
-    
+
     config.data.datasets.push(newDataset);
 }
 
 /**
  * Add a data point for already existing event or new event
- * @param {string} datasetName 
- * @param {number} value 
+ * @param {string} datasetName
+ * @param {number} value
  */
 function addData(datasetName, value) {
     // console.log("addData for event ", datasetName);
@@ -278,7 +278,7 @@ function addData(datasetName, value) {
 
 /**
  * Updates the X axis by adding new time and removing the earliest time
- * @param {number} intervalTimeSeconds 
+ * @param {number} intervalTimeSeconds
  */
 function updateXAxis(intervalTimeSeconds) {
     console.log("\n inupdateXAxis func\n");
@@ -290,16 +290,16 @@ function updateXAxis(intervalTimeSeconds) {
 
 /**
  * Maintains the event occurrence count for each interval
- * @param {string} eventType 
+ * @param {string} eventType
  */
 function findEventFrequencyInGraphInterval(eventType) {
     if(Object.keys(initialChartData.eventFrequencyAtEachTimeMap).length== 0) {
         initializeChart();
-	}
-	else {
-		if(eventType in eventFrequencyInGraphInterval)
-			eventFrequencyInGraphInterval[eventType] += 1;
-		else
-        eventFrequencyInGraphInterval[eventType] = 1;
-	}
+    }
+    else {
+        if(eventType in eventFrequencyInGraphInterval)
+            eventFrequencyInGraphInterval[eventType] += 1;
+        else
+           eventFrequencyInGraphInterval[eventType] = 1;
+    }
 }

@@ -15,9 +15,9 @@ function plotAllGraphs() {
 }
 
 /**
- * Make "/charts" call and get graph data 
- * @param {string} eventCategory 
- * @param {string} chartId 
+ * Make "/charts" call and get graph data
+ * @param {string} eventCategory
+ * @param {string} chartId
  */
 function plotGraph(eventCategory, chartId) {
     $.getJSON('/charts', { name: eventCategory }, function (resultsMap) {
@@ -27,14 +27,13 @@ function plotGraph(eventCategory, chartId) {
                 type: 'line',
                 data: {
                     // Extract the labels from results object
-                    labels: (function() { 
+                    labels: (function() {
                         return Object.keys(results);
                     }()),
 
                     // Extract the dataset from results object
                     datasets: (function() {
-                                var datasetList = [];
-                                var eventDataMap = {};
+                                var datasetList = [], eventDataMap = {}, i, colorName, newColor;
                                 var nameList = Object.keys(results[Object.keys(results)[0]]);
                                 // console.log("nameList in graph", (nameList));
 
@@ -47,9 +46,9 @@ function plotGraph(eventCategory, chartId) {
                                    });
                                 });
 
-                                for(var i=0; i<nameList.length; ++i) {
-                                    var colorName = colorNames[chartColorIndex % colorNames.length];
-                                    var newColor = chartColors[colorName];
+                                for(i = 0; i < nameList.length; i += 1) {
+                                    colorName = colorNames[chartColorIndex % colorNames.length];
+                                    newColor = chartColors[colorName];
                                     ++chartColorIndex;
 
                                     datasetList.push({
@@ -133,7 +132,7 @@ function plotGraph(eventCategory, chartId) {
                         },
                     }
                 ]
-            }
+            };
             // Draw the chart with above data
             new Chart(document.getElementById(chartId).getContext("2d"), chartConfig);
         }
