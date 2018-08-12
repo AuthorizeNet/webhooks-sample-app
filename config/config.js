@@ -2,14 +2,14 @@ const env = 'dev'; // 'dev' or 'test'
 
 const dev = {
     apiEndpoint: 'https://apitest.authorize.net/rest/v1',
-    apiLoginId: process.env.apiLogin || 'you api login id',
+    apiLoginId: process.env.apiLogin || 'your api login id',
     transactionKey: process.env.transactionKey || 'your transaction key',
     app: {
-        port: parseInt(process.env.PORT) || 7000,
+        port: parseInt(process.env.PORT) || 9000,
         host: process.env.APP_DB_HOST || '0.0.0.0'
     },
     db: {
-        name: process.env.DEV_DB_NAME || './db/notification.db',
+        name: process.env.DEV_DB_NAME || 'notification.db',
         size: 1000
     },
     graph: {
@@ -24,7 +24,7 @@ const dev = {
 
 const test = {
     apiEndpoint: 'https://apitest.authorize.net/rest/v1',
-    apiLoginId: process.env.apiLogin || 'you api login id',
+    apiLoginId: process.env.apiLogin || 'your api login id',
     transactionKey: process.env.transactionKey || 'your transaction key',
     app: {
         port: parseInt(process.env.PORT) || 9000,

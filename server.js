@@ -11,8 +11,9 @@ const config = require("./config/config.js");
 const loki = require("lokijs");
 const request = require("request");
 const csurf = require('csurf');
-const cookieParser = require('cookie-parser');
-var csp = require('helmet-csp');
+const cookieParser = require("cookie-parser");
+var csp = require("helmet-csp");
+var fs = require("fs");
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -57,8 +58,13 @@ app.use(csp({
 var noOfDaysGraph = config.graph.noOfDays;
 var dbSize = config.db.size;
 
+// Create a folder named "db" if not already exists
+if (!fs.existsSync('./db')){
+    fs.mkdirSync('./db');
+}
+
 // DB initialization
-var db = new loki(config.db.name, {
+var db = new loki(path.join(__dirname, 'db/') + config.db.name, {
   autoload: true,
   autoloadCallback: databaseInitialize,
   autosave: true,
