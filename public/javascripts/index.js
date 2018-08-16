@@ -104,7 +104,7 @@ $(() => {
         // Reset Event Monitoring tab's background color
         $("#currentEvents").css("background-color", "");
         // Hide the Event Monitoring tab's content
-        $(".eventMonitoring").css("display", "none");
+        $(".event-monitoring").css("display", "none");
         // Display the Dashboard tab's content
         $("#includedContent").css("display", "block");
     });
@@ -117,7 +117,7 @@ $(() => {
         // Hide the Dashboard tab's content
         $("#includedContent").css("display", "none");
         // Display the Event Monitoring tab's content
-        $(".eventMonitoring").css("display", "block");
+        $(".event-monitoring").css("display", "block");
     });
     // // console.log("clicking all items by defaut");
     $('.dropdown li a:first-child').click();
@@ -178,9 +178,9 @@ function displayEventMessage(eventDetails) {
 
     newPanel.innerHTML =
         `<div class="row" style="background-color: lavender;margin: 0px auto;text-align: left;width: 100%;height:100px">
-            <div class="col-md-2">${eventDate}</div>
-            <div class="col-md-5" style="padding: 0px;text-align: center;word-break: break-all">${eventDetails.eventType}</div>
-            <div class="col-md-5" style="padding: 0px;">
+            <div class="col-xs-2">${eventDate}</div>
+            <div class="col-xs-5" style="padding: 0px;text-align: center;word-break: break-all">${eventDetails.eventType}</div>
+            <div class="col-xs-5" style="padding: 0px;">
                 <pre style="background-color: palegoldenrod;padding: 0px;margin: 0px auto;height:100px">${formatedPayload}</pre>
             </div>
         </div>`;

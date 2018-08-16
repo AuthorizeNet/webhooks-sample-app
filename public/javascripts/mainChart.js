@@ -31,11 +31,10 @@ function plotGraph(eventCategory, chartId) {
                         return Object.keys(results);
                     }()),
 
-                    // Extract the dataset from results object
+                    // Extract the values to plot from results object
                     datasets: (function() {
                                 var datasetList = [], eventDataMap = {}, i, colorName, newColor;
                                 var nameList = Object.keys(results[Object.keys(results)[0]]);
-                                // console.log("nameList in graph", (nameList));
 
                                 nameList.forEach((name) => {
                                     eventDataMap[name] = [];
@@ -68,10 +67,7 @@ function plotGraph(eventCategory, chartId) {
                             label: function(tooltipItem, data) {
                                 var label = (data.datasets[tooltipItem.datasetIndex].label).split("=")[0] || '';
                                 var labelValue = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index] || 0;
-                                if(resultsMap.yaxis === "Amount") {
-                                    return label + ": " + labelValue + " $";
-                                }
-                                return label + ": " + labelValue;
+                                return (resultsMap.yaxis === "Amount")? ( label + ": $ " + labelValue): ( label + ": " + labelValue);
                             }
                         }
                     },
@@ -124,10 +120,8 @@ function plotGraph(eventCategory, chartId) {
                         beforeInit: function(chartConfig) {
                             chartConfig.data.datasets.forEach((dataset) => {
                                 var eventTotal = dataset.data.reduce((a,b) => a + b, 0);
-                                dataset.label = dataset.label + " = " + eventTotal;
-                                if(resultsMap.yaxis === "Amount") {
-                                    dataset.label += " $";
-                                }
+                                dataset.label = (resultsMap.yaxis === "Amount")? (dataset.label + " = $ " + eventTotal):
+                                                (dataset.label + " = " + eventTotal);
                             });
                         },
                     }

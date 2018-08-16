@@ -29,7 +29,7 @@ app.use(csp({
     imgSrc: ["'self'"],
     reportUri: '/report-violation',
     objectSrc: ["'none'"],
-    connectSrc: ["'self'", "ws://localhost:" + config.app.port],
+    connectSrc: ["'self'", "ws:", "wss:"],
     // upgradeInsecureRequests: true,
     workerSrc: false  // This is not set.
   },
