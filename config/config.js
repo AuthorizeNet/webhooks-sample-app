@@ -15,8 +15,8 @@ const dev = {
     graph: {
         // Number of Days to show in payment, refund, fraud and customer charts
         noOfDays: 7,
-        // In seconds - interval between each time in X axis.
         maxNotificationCount: 100,
+        // In seconds - interval between each time in X axis.
         intervalTimeSeconds: 300,
         graphTimeScale: 12 // Number of time intervals to show in graph
     }
@@ -31,15 +31,15 @@ const test = {
         host: process.env.APP_DB_HOST || '0.0.0.0'
     },
     db: {
-        name: process.env.DEV_DB_NAME || './db/testnotification.db',
+        name: process.env.DEV_DB_NAME || 'testnotification.db',
         size: 1000
     },
     graph: {
         // Number of Days to show in payment, refund, fraud and customer charts
         noOfDays: 7,
-        // In seconds - interval between each time in X axis.
         maxNotificationCount: 100,
-        intervalTimeSeconds: 5,
+        // In seconds - interval between each time in X axis.
+        intervalTimeSeconds: 300,
         graphTimeScale: 12 // Number of time intervals to show in graph
     }
 };

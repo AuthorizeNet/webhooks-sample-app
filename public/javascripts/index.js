@@ -177,11 +177,11 @@ function displayEventMessage(eventDetails) {
                            .slice(1,-1);
 
     newPanel.innerHTML =
-        `<div class="row" style="background-color: lavender;margin: 0px auto;text-align: left;width: 100%;height:100px">
+        `<div class="row event-headings" style="background-color: lavender;height: 100px">
             <div class="col-xs-2">${eventDate}</div>
             <div class="col-xs-5" style="padding: 0px;text-align: center;word-break: break-all">${eventDetails.eventType}</div>
             <div class="col-xs-5" style="padding: 0px;">
-                <pre style="background-color: palegoldenrod;padding: 0px;margin: 0px auto;height:100px">${formatedPayload}</pre>
+                <pre style="background-color: palegoldenrod;padding: 0px;margin: 0px auto;height: 100px">${formatedPayload}</pre>
             </div>
         </div>`;
 

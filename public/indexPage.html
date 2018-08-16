@@ -5,17 +5,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" href="./images/favicon1.ico" type="image/x-icon">
         <link rel="stylesheet" href="./stylesheets/lib/bootstrap.min.css">
+        <link rel="stylesheet" href="./stylesheets/main.css">
         <script src="./javascripts/lib/jquery-3.3.1.min.js"></script>
         <script src="./javascripts/lib/popper.min.js"></script>
         <script src="./javascripts/lib/bootstrap.min.js"></script>
         <script src="../socket.io/socket.io.js"></script>
         <script src="./javascripts/lib/Chart.min.js"></script>
-
-        <style>
-            html {
-                overflow-y: scroll;
-            }
-        </style>
 
     </head>
     <body>
@@ -39,18 +34,18 @@
                 <hr>
         </div>
 
-        <div class="row event-monitoring" style="width: 100%; margin: 0 auto; text-align: left;" >
+        <div class="row event-monitoring event-headings" >
             <div class="col-xs-12" id="logCount"></div>
         </div>
 
-        <div class="row event-monitoring" style="width: 100%; margin: 0 auto; text-align: left;">
+        <div class="row event-monitoring event-headings">
             <div class="col-sm-10">
                     <table class="table">
                         <thead>
                             <tr class="success">
                                 <th class="col-sm-2">Timestamp</th>
-                                <th class="col-sm-5" style="margin: 0 auto; text-align: center">Event Type</th>
-                                <th class="col-sm-5" style="margin: 0 auto; text-align: center">Payload</th>
+                                <th class="col-sm-5 log-header">Event Type</th>
+                                <th class="col-sm-5 log-header">Payload</th>
                             </tr>
                         </thead>
                     </table>
@@ -75,10 +70,10 @@
                 <div class=" col-xs-12 col-sm-10" id="currentEventList">
                     <div class="panel-group" id="panelCurrentEvent"></div>
                 </div>
-                <div class="col-sm-2" style="display: none"></div>
+                <div class="col-sm-2 display-none"></div>
         </div>
         
-        <div id="includedContent" style="display: none;"></div>
+        <div id="includedContent" class="display-none"></div>
         
         <script src="./javascripts/index.js"></script>
         <script src="./javascripts/chart.js"></script>

@@ -24,22 +24,19 @@ var chartColors = {
 };
 
 var config,
+    initialChartData,
     eventFrequencyInGraphInterval = {},
     myLine,
     colorNames = Object.keys(chartColors);
-
-var initialChartData;
 
 /**
  * Initialize chart data and draws chart if the chart data is populated
  * @param {*} chartResults
  */
 function initialChartCallback(chartResults) {
-    console.log("innside callback of initialize chart func");
     initialChartData = chartResults;
-    console.log("initialChartData ", initialChartData);
+
     if(Object.keys(initialChartData.eventFrequencyAtEachTimeMap).length!= 0) {
-        console.log("before calling drawchart in callback of initialize chart func");
         drawChart(initialChartData);
     }
 }
@@ -50,8 +47,6 @@ initializeChart();
  * calls initialChartCallback() with chart data
  */
 function initializeChart() {
-    console.log("in initialize chart func");
-
     // For live event chart. Query parameter name is passed with value "all"
     $.getJSON('/charts', { name: "all", csrf: $('input[name="_csrf"]').val() }, (results) => { initialChartCallback(results); });
 }
@@ -94,6 +89,7 @@ function drawChart(results) {
                         }())
             },
             options: {
+                // If title for chart is required, uncomment the following
                 // title: {
                 //     display: true,
                 //     text: "Event Tracker",
@@ -125,7 +121,6 @@ function drawChart(results) {
                         labelString: "# of Events",
                         fontStyle: "bold",
                         fontSize: 14,
-                        // stacked:true
                     },
                     ticks : {
                         min : 0,
@@ -181,10 +176,9 @@ function drawChart(results) {
 
     // Execute the setInterval's callback function repeatedly
     var stopGraphUpdate = setInterval(function () {
-        console.log("\n in set interval\n");
         updateLiveEventGraph(results.intervalTimeSeconds, eventFrequencyInGraphInterval);
         eventFrequencyInGraphInterval = {};
-    }, results.intervalTimeSeconds * 1000);// set to results.intervalTimeSeconds
+    }, results.intervalTimeSeconds * 1000);
 }
 
 /**
@@ -265,7 +259,6 @@ function addDataset(newEvent) {
  * @param {number} value
  */
 function addData(datasetName, value) {
-    // console.log("addData for event ", datasetName);
     if (config.data.datasets.length > 0 && datasetName!= undefined) {
         config.data.datasets.forEach(function(dataset, index, chartSeriesList) {
             if(dataset.label === datasetName) {
@@ -281,7 +274,6 @@ function addData(datasetName, value) {
  * @param {number} intervalTimeSeconds
  */
 function updateXAxis(intervalTimeSeconds) {
-    console.log("\n inupdateXAxis func\n");
     var latestTime = config.data.labels[config.data.labels.length-1];
     var nextTime = new Date(new Date(latestTime).getTime() + (1000 * intervalTimeSeconds)).toISOString();
     config.data.labels.push(nextTime);
@@ -293,7 +285,7 @@ function updateXAxis(intervalTimeSeconds) {
  * @param {string} eventType
  */
 function findEventFrequencyInGraphInterval(eventType) {
-    if(Object.keys(initialChartData.eventFrequencyAtEachTimeMap).length== 0) {
+    if(Object.keys(initialChartData.eventFrequencyAtEachTimeMap).length == 0) {
         initializeChart();
     }
     else {

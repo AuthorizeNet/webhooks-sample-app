@@ -1,23 +1,24 @@
-.btn.btn-default {
-    margin: 5px;
-    width: 600px;
+html {
+    overflow-y: scroll;
+}
+
+.event-headings {
+    width: 100%;
+    margin: 0 auto;
     text-align: left;
 }
 
-.btn span.glyphicon {    			
-    opacity: 0;				
+.log-header {
+    margin: 0 auto;
+    text-align: center;
 }
 
-.btn.active span.glyphicon {				
-opacity: 1;
+.display-none {
+    display: none;
 }
 
-/* .btn.btn-default.green {
-    background-color: limegreen;
-} */
-
-canvas {
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
+.dashboard-chart-row {
+    width: 90%;
+    margin: 0 auto;
+    text-align: center;
 }
