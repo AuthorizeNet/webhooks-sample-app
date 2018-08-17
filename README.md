@@ -1,6 +1,6 @@
 # webhooks-sample-app
 
-Webhook Dashboard to monitor real time events and recent business happenings. 
+Webhook sample App to demonstrate the usage of Webhooks  to monitor real time events . 
 
  * Know more about Webhooks creation and configuration, authentication, API endpoints, event types and payload, visit [Webhooks](https://developer.authorize.net/api/reference/features/webhooks.html) 
 
