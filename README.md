@@ -6,6 +6,26 @@ Webhook sample App to demonstrate the usage of Webhooks  to monitor real time ev
 
  * To get started with Authorize.Net, set up [Sandbox account](https://developer.authorize.net/hello_world/) and play. 
 
+## Screenshots
+
+#### Live Event Tracker 
+
+Tracks live event occurrence and can be filtered based on the event types. 
+
+![Live Event Tracker image](/public/images/livechart_filtered.PNG) 
+
+#### Recent Notifications 
+
+Displays recent notifications. Can be filtered by event type using the drop down. 
+
+![Recent Notifications image](/public/images/recent_notifications.PNG) 
+
+#### Dashboard Charts 
+
+Payment, Refund, Customer and Fraud charts are displayed for past 7 days by default. 
+
+![Dashboard charts image](/public/images/maincharts.PNG) 
+
 ## Register and configure Webhooks 
 
 ### Prerequites 
@@ -96,22 +116,4 @@ By default a database file to store recent notifications is created at /db/notif
 2. First tab shows the Live Event chart at the top and live notification monitor at the bottom. A dropdown is present to filter the notifications by event type. 
 3. Second tab contains charts of Payment amount, Refund amount, number of Customers created and number of fraud transactions held in last few days. 
 
-## Screenshots
 
-#### Live Event Tracker 
-
-Tracks live event occurrence and can be filtered based on the event types. 
-
-![Live Event Tracker image](/public/images/livechart_filtered.PNG) 
-
-#### Recent Notifications 
-
-Displays recent notifications. Can be filtered by event type using the drop down. 
-
-![Recent Notifications image](/public/images/recent_notifications.PNG) 
-
-#### Dashboard Charts 
-
-Payment, Refund, Customer and Fraud charts are displayed for past 7 days by default. 
-
-![Dashboard charts image](/public/images/maincharts.PNG) 
