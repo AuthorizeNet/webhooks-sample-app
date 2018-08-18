@@ -2,7 +2,7 @@
 
 Webhook sample application to demonstrate the usage of Webhooks to monitor real time events from Authorize.Net. 
 
- * Know more about Webhooks creation and configuration, authentication, API endpoints, event types and payload, visit [Webhooks](https://developer.authorize.net/api/reference/features/webhooks.html) 
+ * To learn more about Webhooks creation and configuration, authentication, API endpoints, event types and payload, visit [Webhooks](https://developer.authorize.net/api/reference/features/webhooks.html) 
 
  * To get started with Authorize.Net, set up [Sandbox account](https://developer.authorize.net/hello_world/) and play. 
 
