@@ -1,6 +1,6 @@
-# webhooks-sample-app
+# Webhooks Sample App
 
-Webhook sample App to demonstrate the usage of Webhooks  to monitor real time events . 
+Webhook sample application to demonstrate the usage of Webhooks to monitor real time events from Authorize.Net. 
 
  * Know more about Webhooks creation and configuration, authentication, API endpoints, event types and payload, visit [Webhooks](https://developer.authorize.net/api/reference/features/webhooks.html) 
 
