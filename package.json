@@ -4,11 +4,11 @@
   "description": "Webhook Dashboard to monitor real time events and recent business happenings",
   "main": "server.js",
   "dependencies": {
-    "body-parser": "^1.18.3",
+    "body-parser": "^1.20.1",
     "cookie-parser": "^1.4.3",
     "csurf": "^1.9.0",
     "ejs": "^2.6.1",
-    "express": "^4.16.3",
+    "express": "^4.18.2",
     "helmet-csp": "^2.7.1",
     "http": "0.0.0",
     "lokijs": "^1.5.5",
